@@ -131,7 +131,6 @@ PHP_METHOD(hitSuji, __construct)
     ALLOC_INIT_ZVAL(self->router);
     object_init_ex(self->router, hitsuji_router_ce);
     CALL_METHOD(HSJRouter, __construct, NULL, self->router);
-        zval_ptr_dtor(&self->router);
 
     /* アプリケーションの初期化 */
     ALLOC_INIT_ZVAL(self->delegate);
@@ -179,7 +178,9 @@ PHP_METHOD(hitSuji, __destruct)
     }
 
     /* ルーターオブジェクトの破棄 */
+    if (NULL != self->router) {
         zval_ptr_dtor(&self->router);
+    }
 
     /* コンフィグオブジェクトの破棄 */
     if (NULL != self->bootstrap) {

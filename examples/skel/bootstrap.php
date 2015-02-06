@@ -83,7 +83,6 @@ class Bootstrap {
         ini_set('display_errors',         true);
         ini_set('display_startup_errors', true);
         ini_set('error_log', $this->base_dir.'app/logs/error.log');
-echo "______==========__________\n";
     }
 
     /**
