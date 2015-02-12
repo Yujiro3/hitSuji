@@ -294,7 +294,7 @@ PHP_METHOD(HSJRouter, run)
     if (self->is_callable) {
         hitsuji_call_function_0_params(self->callable, NULL);
     } else {
-        hitsuji_execute_scripts_0_params(Z_STRVAL(self->filename));
+        hitsuji_execute_scripts(Z_STRVAL(self->filename));
     }
 
     RETURN_TRUE;

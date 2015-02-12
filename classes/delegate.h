@@ -229,10 +229,9 @@ PHP_METHOD(HSJDelegate, run)
         zval_ptr_dtor(&zchecked);
         zval_ptr_dtor(&verified);
     } else {
-        zval _retval;
         if (zend_hash_num_elements(self->quicks) == 0) {
             /* alwaysコールバック実行 */
-            zvars = hitsuji_calls_function_1_params(self->always, &_retval, zvars);
+            zvars = hitsuji_call_function_1_params(self->always, NULL, zvars);
         } else {
             /* actionコールバック実行 */
             zvars = hitsuji_calls_function_1_params(self->quicks, &_retval, zvars);

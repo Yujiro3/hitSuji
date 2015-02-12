@@ -224,7 +224,6 @@ zval *hitsuji_calls_function_1_params(HashTable *ht, zval *retval_ptr, zval *par
             efree(callback_info.params);
         }
 
-
         if (zend_is_true(retval)) {
             zval_ptr_dtor(&param);
             param = retval;
