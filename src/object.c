@@ -70,6 +70,13 @@ zend_object_value hitsuji_ctor(zend_class_entry *ce TSRMLS_DC)
     object_properties_init(&self->std, ce);
     rebuild_object_properties(&self->std);
 
+    self->bootstrap   = NULL;
+    self->router      = NULL;
+    self->delegate    = NULL;
+    self->request     = NULL;
+    self->view        = NULL;
+    self->request_ptr = NULL;
+
     retval.handle = zend_objects_store_put(
         self, 
         (zend_objects_store_dtor_t)zend_objects_destroy_object, 
@@ -110,6 +117,10 @@ zend_object_value hitsuji_router_ctor(zend_class_entry *ce TSRMLS_DC)
     zend_object_std_init(&self->std, ce TSRMLS_CC);
     object_properties_init(&self->std, ce);
     rebuild_object_properties(&self->std);
+
+    self->routes      = NULL;
+    self->callable    = NULL;
+    self->is_callable = 0;
 
     retval.handle = zend_objects_store_put(
         self, 
@@ -192,6 +203,13 @@ zend_object_value hitsuji_delegate_ctor(zend_class_entry *ce TSRMLS_DC)
     zend_object_std_init(&self->std, ce TSRMLS_CC);
     object_properties_init(&self->std, ce);
     rebuild_object_properties(&self->std);
+
+    self->actions = NULL;
+    self->parses  = NULL;
+    self->quicks  = NULL;
+    self->always  = NULL;
+    self->done    = NULL;
+    self->fail    = NULL;
 
     retval.handle = zend_objects_store_put(
         self, 

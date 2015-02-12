@@ -17,6 +17,12 @@
 php -d extension=modules/hitsuji.so -f examples/view.php
 */
 
-namespace hitSuji;
-
 include 'skel/bootstrap.php';
+
+$view = hitSuji::view();
+
+$view->layout('layout.tpl');
+$view->content('always.tpl');
+$view->assigns(array('search'=>'yahoo'));
+$view->assign('id', '123');
+$view->display();

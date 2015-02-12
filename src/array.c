@@ -31,6 +31,7 @@
 #define HAVE_HITSUJI_ARRAY
 
 #include "php.h"
+#include "zend_interfaces.h"
 
 #ifndef HAVE_PHP_HITSUJI_H
 #   include "php_hitsuji.h"
@@ -51,6 +52,8 @@ void hash_trim_index(HashTable *array)
 {
     HashPosition position;
     zval **operand;
+    array_trim_index_t trims[zend_hash_num_elements(array)];
+    int row=0, cnt = 0;
 
     if (zend_hash_num_elements(array) == 0) {
         return;
@@ -65,11 +68,22 @@ void hash_trim_index(HashTable *array)
         ulong index;
 
         int key_type = zend_hash_get_current_key_ex(array, &key, &key_len, &index, 0, &position);
+        trims[row].index = index;
 
         if (HASH_KEY_IS_LONG == key_type) {
-            zend_hash_del_key_or_index(array, NULL, 0, index, HASH_DEL_INDEX);
+            trims[row].flag = 1;
+        } else {
+            trims[row].flag = 0;
         }
+        row++;
     } // for (...)
+
+    for (cnt = 0; cnt < row; cnt++) {
+        if (trims[cnt].flag) {
+            zend_hash_del_key_or_index(array, NULL, 0, trims[cnt].index, HASH_DEL_INDEX);
+        }
+    }
+    zend_hash_internal_pointer_reset(array);
 }
 
 /**
@@ -88,49 +102,6 @@ void hash_all_clean(HashTable *array)
         return;
     }
     zend_hash_clean(array);
-}
-
-/**
- * 配列をbool値とデータに分離
- *
- * @access public
- * @param zval *array
- * @return int
- */
-int hash_bool_data(HashTable *array, zval *value) 
-{
-    HashPosition position;
-    zval **data;
-    int result = 0;
-    char *key = NULL;
-    uint key_len = 0;
-    ulong index;
-
-    if (zend_hash_num_elements(array) == 0) {
-        return result;
-    }
-
-    /* 先頭の配列をチェック */
-    zend_hash_internal_pointer_reset_ex(array, &position);
-    if (zend_hash_get_current_data_ex(array, (void **)&data, &position) == SUCCESS) {
-        if (IS_BOOL == Z_TYPE_PP(data)) {
-            if (zend_is_true(*data)) {
-                result = 1;
-            }
-        } else {
-            return 1;
-        }
-    }
-
-    /* 次の配列へ進める */
-    zend_hash_move_forward_ex(array, &position);
-
-    if (zend_hash_get_current_data_ex(array, (void **)&data, &position) != SUCCESS) {
-        return result;
-    }
-    ZVAL_ZVAL(value, *data, 1, 0);
-
-    return result;
 }
 
 /**
@@ -170,17 +141,52 @@ void array_all_clean(zval *array)
  * @param zval *array
  * @return int
  */
-int array_bool_data(zval *array, zval *value) 
+int array_bool_data(zval *array) 
 {
+    HashPosition position;
+    zval **data, *tmp;
+    int result = 0;
+    char *key = NULL;
+    uint key_len = 0;
+    ulong index;
+
     if (!zend_is_true(array)) {
-        return 0;
+        return result;
     }
 
     if (IS_ARRAY != Z_TYPE_P(array)) {
         return 1;
     }
 
-    return hash_bool_data(Z_ARRVAL_P(array), value);
+    if (zend_hash_num_elements(Z_ARRVAL_P(array)) == 0) {
+        return result;
+    }
+
+    /* 先頭の配列をチェック */
+    zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(array), &position);
+    if (zend_hash_get_current_data_ex(Z_ARRVAL_P(array), (void **)&data, &position) == SUCCESS) {
+        if (IS_BOOL == Z_TYPE_PP(data)) {
+            if (zend_is_true(*data)) {
+                result = 1;
+            }
+        } else {
+            return 1;
+        }
+    }
+
+    /* 次の配列へ進める */
+    zend_hash_move_forward_ex(Z_ARRVAL_P(array), &position);
+
+    if (zend_hash_get_current_data_ex(Z_ARRVAL_P(array), (void **)&data, &position) != SUCCESS) {
+        return result;
+    }
+    ALLOC_INIT_ZVAL(tmp);
+    ZVAL_ZVAL(tmp, *data, 1, 0);
+
+    zval_ptr_dtor(&array);
+    array = tmp;
+
+    return result;
 }
 
 #endif      // #ifndef HAVE_HITSUJI_ARRAY

@@ -31,6 +31,7 @@
 #define HAVE_HITSUJI_CALLABLE
 
 #include "php.h"
+#include "zend_interfaces.h"
 
 #ifndef HAVE_PHP_HITSUJI_H
 #   include "php_hitsuji.h"
@@ -46,12 +47,13 @@
  * @access public
  * @param zval *callable
  * @param zval *retval_ptr
- * @return int
+ * @return *zval
  */
-int hitsuji_call_function_0_params(zval *callable, zval *retval_ptr) 
+zval *hitsuji_call_function_0_params(zval *callable, zval *retval_ptr) 
 {
     zend_fcall_info callback_info;
     zend_fcall_info_cache callback_cache;
+    zval *retval;
 
     int result = zend_fcall_info_init(
         callable,
@@ -65,8 +67,14 @@ int hitsuji_call_function_0_params(zval *callable, zval *retval_ptr)
     if (SUCCESS == result) {
         zend_fcall_info_args_clear(&callback_info, 1);
 
-        callback_info.retval_ptr_ptr = &retval_ptr;
+        callback_info.retval_ptr_ptr = retval_ptr ? &retval_ptr : &retval;
         result = zend_call_function(&callback_info, &callback_cache TSRMLS_CC);
+    }
+
+    if (!retval_ptr) {
+        if (retval) {
+            zval_ptr_dtor(&retval);
+        }
     }
 
     return result;
@@ -79,12 +87,13 @@ int hitsuji_call_function_0_params(zval *callable, zval *retval_ptr)
  * @param zval *callable
  * @param zval *retval_ptr
  * @param zval *param
- * @return int
+ * @return *zval
  */
-int hitsuji_call_function_1_params(zval *callable, zval *retval_ptr, zval *param) 
+zval *hitsuji_call_function_1_params(zval *callable, zval *retval_ptr, zval *param) 
 {
     zend_fcall_info callback_info;
     zend_fcall_info_cache callback_cache;
+    zval *retval;
 
     int result = zend_fcall_info_init(
         callable,
@@ -96,16 +105,27 @@ int hitsuji_call_function_1_params(zval *callable, zval *retval_ptr, zval *param
     );
 
     if (SUCCESS == result) {
+        zval ***params;
+
         zend_fcall_info_args_clear(&callback_info, 1);
         callback_info.param_count = 1;
-        callback_info.params = (zval ***) erealloc(callback_info.params, sizeof(zval **));
-        *callback_info.params = &param;
+        callback_info.params = params = (zval ***) erealloc(callback_info.params, 1 * sizeof(zval **));
 
-        callback_info.retval_ptr_ptr = &retval_ptr;
+        *params = &param;
+
+        callback_info.retval_ptr_ptr = retval_ptr ? &retval_ptr : &retval;
         result = zend_call_function(&callback_info, &callback_cache TSRMLS_CC);
         efree(callback_info.params);
     }
-    return result;
+
+    if (!retval_ptr) {
+        if (retval) {
+            zval_ptr_dtor(&retval);
+        }
+        return NULL;
+    }
+
+    return retval_ptr;
 }
 
 /**
@@ -116,12 +136,13 @@ int hitsuji_call_function_1_params(zval *callable, zval *retval_ptr, zval *param
  * @param zval *retval_ptr
  * @param zval *param
  * @param zval *param
- * @return int
+ * @return *zval
  */
-int hitsuji_call_function_2_params(zval *callable, zval *retval_ptr, zval *param1, zval *param2) 
+zval *hitsuji_call_function_2_params(zval *callable, zval *retval_ptr, zval *param1, zval *param2) 
 {
     zend_fcall_info callback_info;
     zend_fcall_info_cache callback_cache;
+    zval *retval;
 
     int result = zend_fcall_info_init(
         callable,
@@ -142,9 +163,132 @@ int hitsuji_call_function_2_params(zval *callable, zval *retval_ptr, zval *param
         *params++ = &param1;
         *params   = &param2;
 
-        callback_info.retval_ptr_ptr = &retval_ptr;
+        callback_info.retval_ptr_ptr = retval_ptr ? &retval_ptr : &retval;
         result = zend_call_function(&callback_info, &callback_cache TSRMLS_CC);
         efree(callback_info.params);
+    }
+
+    if (!retval_ptr) {
+        if (retval) {
+            zval_ptr_dtor(&retval);
+        }
+    }
+
+    return result;
+}
+
+/**
+ * 複数関数の実行 引数1
+ *
+ * @access public
+ * @param HashTable *ht
+ * @param zval      *retval_ptr
+ * @param zval      *param
+ * @return *zval
+ */
+zval *hitsuji_calls_function_1_params(HashTable *ht, zval *retval_ptr, zval *param)
+{
+    HashPosition pos;
+    zend_fcall_info callback_info;
+    zend_fcall_info_cache callback_cache;
+    zval *retval, **callable;
+
+    if (zend_hash_num_elements(ht) == 0) {
+        return param;
+    }
+
+    for (zend_hash_internal_pointer_reset_ex(ht, &pos);
+         zend_hash_get_current_data_ex(ht, (void **)&callable, &pos) == SUCCESS;
+         zend_hash_move_forward_ex(ht, &pos)
+    ) {
+        int result = zend_fcall_info_init(
+            *callable,
+            0, 
+            &callback_info, 
+            &callback_cache, 
+            NULL, 
+            NULL TSRMLS_CC
+        );
+
+        if (SUCCESS == result) {
+            zval ***params;
+
+            zend_fcall_info_args_clear(&callback_info, 1);
+            callback_info.param_count = 1;
+            callback_info.params = params = (zval ***) erealloc(callback_info.params, sizeof(zval **));
+
+            *params = &param;
+
+            callback_info.retval_ptr_ptr = &retval;
+            result = zend_call_function(&callback_info, &callback_cache TSRMLS_CC);
+            efree(callback_info.params);
+        }
+
+
+        if (zend_is_true(retval)) {
+            zval_ptr_dtor(&param);
+            param = retval;
+        }
+    }
+
+    return retval_ptr = retval;
+}
+
+/**
+ * 関数の実行 引数配列
+ *
+ * @access public
+ * @param zval *callable
+ * @param zval *retval_ptr
+ * @param zval *param
+ * @return int
+ */
+int hitsuji_call_function_args(zval *callable, zval *retval_ptr, zval *param) 
+{
+    zend_fcall_info callback_info;
+    zend_fcall_info_cache callback_cache;
+    zval *retval;
+
+    if (!param) {
+        return SUCCESS;
+    }
+
+    if (Z_TYPE_P(param) != IS_ARRAY) {
+        return FAILURE;
+    }
+
+
+    int result = zend_fcall_info_init(
+        callable,
+        0, 
+        &callback_info, 
+        &callback_cache, 
+        NULL, 
+        NULL TSRMLS_CC
+    );
+
+    if (SUCCESS == result) {
+        HashPosition pos;
+        zval **arg, ***params;
+
+        callback_info.param_count = zend_hash_num_elements(Z_ARRVAL_P(param));
+        callback_info.params = params = (zval ***) erealloc(callback_info.params, callback_info.param_count * sizeof(zval **));
+
+        zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(param), &pos);
+        while (zend_hash_get_current_data_ex(Z_ARRVAL_P(param), (void *) &arg, &pos) == SUCCESS) {
+            *params++ = arg;
+            zend_hash_move_forward_ex(Z_ARRVAL_P(param), &pos);
+        }
+
+        callback_info.retval_ptr_ptr = retval_ptr ? &retval_ptr : &retval;
+        result = zend_call_function(&callback_info, &callback_cache TSRMLS_CC);
+        efree(callback_info.params);
+    }
+
+    if (!retval_ptr) {
+        if (retval) {
+            zval_ptr_dtor(&retval);
+        }
     }
 
     return result;
@@ -205,7 +349,7 @@ void hitsuji_call_user_function_1_params(const char *funcname, zval *retval_ptr,
  * @param const char *filename
  * @return void
  */
-void hitsuji_execute_scripts_0_params(const char *filename)
+void hitsuji_execute_scripts(const char *filename)
 {
     zend_file_handle file_handle;
 
@@ -226,56 +370,5 @@ void hitsuji_execute_scripts_0_params(const char *filename)
         zend_destroy_file_handle(&file_handle TSRMLS_CC);
     }
 }
-
-/**
- * 指定スクリプトの実行 引数1
- *
- * @access public
- * @param const char *filename
- * @param zval       *param
- * @return void
- */
-void hitsuji_execute_scripts_1_params(const char *filename, zval *param)
-{
-    zend_file_handle file_handle;
-    zval retval;
-
-    /* extract() PHP関数の実行 */
-    hitsuji_call_user_function_1_params("extract", &retval, param);
-
-    /* 外部ファイルの読み込み */
-    if (php_stream_open_for_zend_ex(filename, &file_handle, USE_PATH | STREAM_OPEN_FOR_INCLUDE TSRMLS_CC) == SUCCESS) {
-        zend_try {
-            /* 実行前の状態を退避 */
-            zend_op **orig_opline_ptr = EG(opline_ptr);
-
-            zend_execute_scripts(ZEND_INCLUDE_ONCE TSRMLS_CC, NULL, 1, &file_handle);
-
-            /* 実行前の状態を復帰 */
-            EG(opline_ptr) = orig_opline_ptr;
-        }
-        zend_end_try();
-
-        /* ファイルハンドラーの開放 */
-        zend_destroy_file_handle(&file_handle TSRMLS_CC);
-    }
-}
-
-/**
- * 指定スクリプトの実行 引数1
- *
- * @access public
- * @param const char *filename
- * @param HashTable  *ht
- * @return void
- */
-void hitsuji_execute_scripts_1_hash(const char *filename, HashTable *ht)
-{
-    zval param;
-    param.value.ht = ht;
-
-    hitsuji_execute_scripts_1_params(filename, &param);
-}
-
 #endif      // #ifndef HAVE_HITSUJI_CALLABLE
 

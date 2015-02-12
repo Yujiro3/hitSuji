@@ -17,6 +17,30 @@
 php -d extension=modules/hitsuji.so -f examples/router.php
 */
 
-namespace hitSuji;
-
 include 'skel/bootstrap.php';
+
+$router = hitSuji::router();
+/**/
+hitSuji::router(
+)->always(
+  'simple.php'
+)->on(
+  'get',
+  'usr/:id',
+  'simple.php'
+)->run('get','usr/123');
+/** /
+\hitSuji::router(
+)->always(
+  function () {
+    echo "default\n";
+  }
+)->on(
+  'get',
+  'usr/:id',
+  function ($id) {
+var_dump($id);
+    echo "usr:{$id}\n";
+  }
+)->run('get','usr/123');
+/**/

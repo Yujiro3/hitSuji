@@ -51,6 +51,9 @@ extern zend_class_entry *hitsuji_delegate_ce;
 extern zend_class_entry *hitsuji_view_ce;
 extern zend_class_entry *hitsuji_exception_ce;
 
+extern zval *hitsuji_object_ptr;
+
+
 extern zend_module_entry hitsuji_module_entry;
 #define phpext_hitsuji_ptr &hitsuji_module_entry
 
@@ -87,14 +90,17 @@ PHP_MINFO_FUNCTION(hitSuji);
     CALL_METHOD_BASE(classname, name)(0, retval, NULL, thisptr, 0 TSRMLS_CC);
 
 #define CALL_METHOD1(classname, name, retval, thisptr, param1) \
+    ZEND_VM_STACK_GROW_IF_NEEDED(2); \
     CALL_METHOD_HELPER(classname, name, retval, thisptr, 1, param1);
 
 #define CALL_METHOD2(classname, name, retval, thisptr, param1, param2) \
+    ZEND_VM_STACK_GROW_IF_NEEDED(3); \
     PUSH_PARAM(param1); \
     CALL_METHOD_HELPER(classname, name, retval, thisptr, 2, param2); \
     POP_PARAM();
 
 #define CALL_METHOD3(classname, name, retval, thisptr, param1, param2, param3) \
+    ZEND_VM_STACK_GROW_IF_NEEDED(4); \
     PUSH_PARAM(param1); PUSH_PARAM(param2); \
     CALL_METHOD_HELPER(classname, name, retval, thisptr, 3, param3); \
     POP_PARAM(); POP_PARAM();
@@ -128,12 +134,12 @@ PHP_MINFO_FUNCTION(hitSuji);
 #   include "classes/request.h"
 #endif
 
-#ifndef HAVE_HITSUJI_CLASS_DELEGATE_H
-#   include "classes/delegate.h"
-#endif
-
 #ifndef HAVE_HITSUJI_CLASS_VIEW_H
 #   include "classes/view.h"
+#endif
+
+#ifndef HAVE_HITSUJI_CLASS_DELEGATE_H
+#   include "classes/delegate.h"
 #endif
 
 #endif    /* HAVE_PHP_HITSUJI_H */

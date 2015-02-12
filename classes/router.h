@@ -46,7 +46,7 @@ typedef struct {
  */
 typedef struct {
     zend_object std;
-    HashTable routes;
+    HashTable *routes;
     zval dir;
     zval filename;
     zval *callable;
@@ -100,6 +100,14 @@ zend_function_entry hitsuji_router_class_methods[] = {
     PHP_FE_END    /* Must be the last line in groonga_functions[] */
 };
 
+static void Router_destroy_route(hitsuji_route_t *route) { /* {{{ */
+    zval_dtor(&route->method);
+    zval_dtor(&route->uri);
+    zval_dtor(&route->filename);
+    zval_ptr_dtor(&route->callable);
+} /* }}} */
+
+
 /**
  * HSJRouterクラス関数:コンストラクタ
  *
@@ -108,7 +116,8 @@ zend_function_entry hitsuji_router_class_methods[] = {
 PHP_METHOD(HSJRouter, __construct)
 {
     hitsuji_router_t *self;
-    zval zkey, *zvars;
+    zval zkey, *zvars, *zdir;
+    char *dir;
 
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
@@ -116,12 +125,12 @@ PHP_METHOD(HSJRouter, __construct)
     self = (hitsuji_router_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
     /* テンプレートファイル保存ディレクトリの取得と設定 */
-    ZVAL_STRING(&zkey, "page", 1);
-    CALL_METHOD1(hitSuji, dir, &self->dir, hitsuji_object_ptr, &zkey);
+    dir = getDir("page");
+    ZVAL_STRING(&self->dir, dir, 1);
 
-    /* 変数保存用配列の初期化 */
-    zvars = zend_read_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("vars"), 1 TSRMLS_CC);
-    array_init(zvars);
+    /* hashテーブルの初期化 */
+    ALLOC_HASHTABLE(self->routes);
+    zend_hash_init(self->routes, 0, NULL, (dtor_func_t) Router_destroy_route, 0);
 }
 
 /**
@@ -132,12 +141,27 @@ PHP_METHOD(HSJRouter, __construct)
 PHP_METHOD(HSJRouter, __destruct)
 {
     hitsuji_router_t *self;
+    zval *zvars;
 
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
     }
-
     self = (hitsuji_router_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
+
+    zval_dtor(&self->dir);
+
+    if (NULL != self->callable) {
+        zval_ptr_dtor(&self->callable);
+    }
+
+    if (NULL != self->routes) {
+        zend_hash_destroy(self->routes);
+        FREE_HASHTABLE(self->routes);
+    }
+
+    if (zend_is_true(&self->filename)) {
+        zval_dtor(&self->filename);
+    }
 }
 
 /**
@@ -157,7 +181,7 @@ PHP_METHOD(HSJRouter, run)
     hitsuji_router_t *self;
     hitsuji_route_t *route = NULL;
     HashPosition position;
-    zval *retval_ptr, zurl;
+    zval zurl;
     const char *method = NULL;
     char *uri = NULL;
     uint method_len = 0, uri_len = 0;
@@ -200,11 +224,11 @@ PHP_METHOD(HSJRouter, run)
     }
     self = (hitsuji_router_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    if (zend_hash_num_elements(&self->routes) != 0) {
+    if (NULL != self->routes && zend_hash_num_elements(self->routes) != 0) {
         /* ルーティングルールをループして検索 */
-        for (zend_hash_internal_pointer_reset_ex(&self->routes, &position);
-             zend_hash_get_current_data_ex(&self->routes, (void**) &route, &position) == SUCCESS;
-             zend_hash_move_forward_ex(&self->routes, &position)) {
+        for (zend_hash_internal_pointer_reset_ex(self->routes, &position);
+             zend_hash_get_current_data_ex(self->routes, (void**) &route, &position) == SUCCESS;
+             zend_hash_move_forward_ex(self->routes, &position)) {
 
             /* メソッドの比較 */
             if ((method_len == Z_STRLEN(route->method)) && 
@@ -216,7 +240,7 @@ PHP_METHOD(HSJRouter, run)
                 int pattern_len = 0, replace_count=0;
 
                 /* ルーティングルールを正規表現にコンパイル */
-                ZVAL_STRINGL(&replace_val, "(?P<\\1>[^/]+)", strlen("(?P<\\1>[^/]+)"), 1);
+                ZVAL_STRINGL(&replace_val, "(?P<\\1>[^/]+)", strlen("(?P<\\1>[^/]+)"), 0);
                 assoc_pattern = php_pcre_replace(
                     "/:([^\\/]+)/", strlen("/:([^\\/]+)/"),
                     Z_STRVAL(route->uri), Z_STRLEN(route->uri),
@@ -236,7 +260,8 @@ PHP_METHOD(HSJRouter, run)
                 if (NULL != pcre) {
                     zval *zvars;
 
-                    zvars = zend_read_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("vars"), 1 TSRMLS_CC);
+                    ALLOC_INIT_ZVAL(zvars);
+                    array_init(zvars);
 
                     php_pcre_match_impl(
                         pcre,
@@ -248,12 +273,16 @@ PHP_METHOD(HSJRouter, run)
 
                     if (zend_is_true(&zmatch)) {
                         zend_update_property_string(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("page"), Z_STRVAL(route->uri) TSRMLS_CC);
+                        zend_update_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("vars"), zvars TSRMLS_CC);
 
                         if (route->is_callable) {
-                            hitsuji_call_function_1_params(route->callable, retval_ptr, zvars);
+                            hitsuji_call_function_args(route->callable, NULL, zvars);
                         } else {
-                            hitsuji_execute_scripts_1_params(Z_STRVAL(route->filename), zvars);
+                            /* extract() PHP関数の実行 */
+                            hitsuji_execute_scripts(Z_STRVAL(route->filename));
                         }
+
+                        zval_ptr_dtor(&zvars);
 
                         RETURN_TRUE;
                     }
@@ -263,7 +292,7 @@ PHP_METHOD(HSJRouter, run)
     } // if
 
     if (self->is_callable) {
-        hitsuji_call_function_0_params(self->callable, retval_ptr);
+        hitsuji_call_function_0_params(self->callable, NULL);
     } else {
         hitsuji_execute_scripts_0_params(Z_STRVAL(self->filename));
     }
@@ -353,6 +382,7 @@ PHP_METHOD(HSJRouter, on)
     if (zend_is_callable(callable, 0, NULL TSRMLS_CC)) {
         route.callable = callable;
         Z_ADDREF_P(route.callable);
+
         route.is_callable = 1;
     } else if (IS_STRING == Z_TYPE_P(callable)) {
         char filename[256];
@@ -374,12 +404,11 @@ PHP_METHOD(HSJRouter, on)
 
     /* ハッシュテーブルへ登録 */
     zend_hash_next_index_insert(
-        &self->routes, 
+        self->routes, 
         (void**) &route, 
         sizeof(hitsuji_route_t), 
         NULL
     );
-
     RETURN_CHAIN();
 }
 

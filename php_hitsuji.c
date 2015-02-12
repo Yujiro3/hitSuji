@@ -49,15 +49,19 @@
 #   include "php_hitsuji.h"
 #endif
 
-#ifndef HAVE_PROONGA_ARRAY_H
+#ifndef HAVE_HITSUJI_ARRAY_H
 #   include "src/array.h"
 #endif
 
-#ifndef HAVE_PROONGA_CALLABLE_H
+#ifndef HAVE_HITSUJI_CALLABLE_H
 #   include "src/callable.h"
 #endif
 
-#ifndef HAVE_PROONGA_OBJECT_H
+#ifndef HAVE_HITSUJI_UTILITY_H
+#   include "src/utility.h"
+#endif
+
+#ifndef HAVE_HITSUJI_OBJECT_H
 #   include "src/object.h"
 #endif
 
@@ -140,7 +144,6 @@ PHP_MINIT_FUNCTION(hitSuji)
     INIT_CLASS_ENTRY(ce, "hitSuji\\View", hitsuji_view_class_methods);
     hitsuji_view_ce = zend_register_internal_class(&ce TSRMLS_CC);
     hitsuji_view_ce->create_object = hitsuji_view_ctor;
-    zend_declare_property_string(hitsuji_view_ce, ZEND_STRL("dir"),    "", ZEND_ACC_PUBLIC TSRMLS_CC);
     zend_declare_property_string(hitsuji_view_ce, ZEND_STRL("layout"), "", ZEND_ACC_PUBLIC TSRMLS_CC);
     zend_declare_property_null(hitsuji_view_ce,   ZEND_STRL("vars"),       ZEND_ACC_PUBLIC TSRMLS_CC);
 
@@ -215,12 +218,12 @@ PHP_MINFO_FUNCTION(hitSuji)
 #   include "classes/request.h"
 #endif
 
-#ifndef HAVE_HITSUJI_CLASS_DELEGATE
-#   include "classes/delegate.h"
-#endif
-
 #ifndef HAVE_HITSUJI_CLASS_VIEW
 #   include "classes/view.h"
+#endif
+
+#ifndef HAVE_HITSUJI_CLASS_DELEGATE
+#   include "classes/delegate.h"
 #endif
 
 #endif      // #ifndef HAVE_PHP_HITSUJI

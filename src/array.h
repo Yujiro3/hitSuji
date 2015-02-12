@@ -30,12 +30,20 @@
 #ifndef HAVE_HITSUJI_ARRAY_H
 #define HAVE_HITSUJI_ARRAY_H
 
+/**
+ * インデックス削除用
+ */
+typedef struct {
+    ulong index;
+    int flag;
+} array_trim_index_t;
+
+
 void hash_trim_index(HashTable *array);
 void hash_all_clean(HashTable *array);
-int hash_bool_data(HashTable *array, zval *value);
 
 void array_trim_index(zval *array);
 void array_all_clean(zval *array);
-int array_bool_data(zval *array, zval *value);
+int array_bool_data(zval *array);
 
 #endif  // #ifndef HAVE_HITSUJI_ARRAY_H

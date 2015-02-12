@@ -111,33 +111,39 @@ zend_function_entry hitsuji_request_class_methods[] = {
 PHP_METHOD(HSJRequest, __construct)
 {
     hitsuji_request_t *self;
+    hitsuji_t *hitsuji;
     zval zkey, *zvars, *zchecked;
+    char *patt;
 
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
     }
-
     self = (hitsuji_request_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
+    hitsuji = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
 
-    ZVAL_STRING(&zkey, "string", 1);
-    CALL_METHOD1(hitSuji, pattern, &self->pat_string, hitsuji_object_ptr, &zkey);
+    patt = getPattern("string");
+    ZVAL_STRING(&self->pat_string, patt, 1);
 
-    ZVAL_STRING(&zkey, "email", 1);
-    CALL_METHOD1(hitSuji, pattern, &self->pat_email, hitsuji_object_ptr, &zkey);
+    patt = getPattern("email");
+    ZVAL_STRING(&self->pat_email, patt, 1);
 
-    ZVAL_STRING(&zkey, "date", 1);
-    CALL_METHOD1(hitSuji, pattern, &self->pat_date, hitsuji_object_ptr, &zkey);
+    patt = getPattern("date");
+    ZVAL_STRING(&self->pat_date, patt, 1);
 
-    ZVAL_STRING(&zkey, "datetime", 1);
-    CALL_METHOD1(hitSuji, pattern, &self->pat_datetime, hitsuji_object_ptr, &zkey);
+    patt = getPattern("datetime");
+    ZVAL_STRING(&self->pat_datetime, patt, 1);
 
     /* 変数保存用配列の初期化 */
-    zvars = zend_read_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("vars"), 1 TSRMLS_CC);
+    ALLOC_INIT_ZVAL(zvars);
     array_init(zvars);
+    zend_update_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("vars"), zvars TSRMLS_CC);
+    zval_ptr_dtor(&zvars);
 
     /* 変数保存用配列の初期化 */
-    zchecked = zend_read_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("checked"), 1 TSRMLS_CC);
+    ALLOC_INIT_ZVAL(zchecked);
     array_init(zchecked);
+    zend_update_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("checked"), zchecked TSRMLS_CC);
+    zval_ptr_dtor(&zchecked);
 }
 
 /**
@@ -152,8 +158,12 @@ PHP_METHOD(HSJRequest, __destruct)
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
     }
-
     self = (hitsuji_request_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
+
+    zval_dtor(&self->pat_datetime);
+    zval_dtor(&self->pat_date);
+    zval_dtor(&self->pat_email);
+    zval_dtor(&self->pat_string);
 }
 
 /**
@@ -193,7 +203,7 @@ PHP_METHOD(HSJRequest, verifies)
         ulong num_key;
 
         zend_hash_get_current_key_ex(Z_ARRVAL_P(array), &key, &key_len, &num_key, 0, &pos);
-        ZVAL_STRINGL(&zkey, key, key_len, 1);
+        ZVAL_STRINGL(&zkey, key, key_len, 0);
 
         CALL_METHOD2(HSJRequest, verify, &retval, getThis(), &zkey, *option);
     }
@@ -222,9 +232,10 @@ PHP_METHOD(HSJRequest, verifies)
  */
 PHP_METHOD(HSJRequest, verify)
 {
-    zval zkey, ztrack, zvalue;
+    hitsuji_t *hitsuji;
+    zval *zvalue = NULL;
     zval *options, *zvars, *zchecked;
-    char *key, *type, *track = {"request"}, *pattern = {'\0'};
+    char *key, *type = {"string"}, *track = {"request"}, *pattern = {'\0'};
     uint key_len;
     int  require = 0, check = 1;
 
@@ -232,6 +243,7 @@ PHP_METHOD(HSJRequest, verify)
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|z", &key, &key_len, &options) == FAILURE) {
         RETURN_FALSE;
     }
+    hitsuji = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
 
     /* 判定条件の取得 */
     if (IS_STRING == Z_TYPE_P(options)) {
@@ -269,42 +281,42 @@ PHP_METHOD(HSJRequest, verify)
     }
 
     /* 値の取得 */
-    ZVAL_STRING(&ztrack, track, 1);
-    ZVAL_STRINGL(&zkey, key, key_len, 1);
-    CALL_METHOD2(HSJRequest, value, &zvalue, getThis(), &zkey, &ztrack);
+    ALLOC_INIT_ZVAL(zvalue);
+    getRequestValue(zvalue, key, track, hitsuji->request_ptr);
 
-    if (zend_is_true(&zvalue)) {
+    if (zend_is_true(zvalue)) {
         zval retval;
 
         zvars = zend_read_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("vars"), 1 TSRMLS_CC);
-        if (IS_LONG == Z_TYPE(zvalue)) {
-            add_assoc_long(zvars, key, Z_LVAL(zvalue));
-        } else if (IS_DOUBLE == Z_TYPE(zvalue)) {
-            add_assoc_double(zvars, key, Z_DVAL(zvalue));
-        } else if (IS_STRING == Z_TYPE(zvalue)) {
-            add_assoc_string(zvars, key, Z_STRVAL(zvalue), 1);
+        if (IS_LONG == Z_TYPE_P(zvalue)) {
+            add_assoc_long(zvars, key, Z_LVAL_P(zvalue));
+        } else if (IS_DOUBLE == Z_TYPE_P(zvalue)) {
+            add_assoc_double(zvars, key, Z_DVAL_P(zvalue));
+        } else if (IS_STRING == Z_TYPE_P(zvalue)) {
+            add_assoc_string(zvars, key, Z_STRVAL_P(zvalue), 1);
         } else {
-            add_assoc_zval(zvars, key, &zvalue);
+            add_assoc_zval(zvars, key, zvalue);
         }
+        zend_update_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("vars"), zvars TSRMLS_CC);
 
         /* バリデーション */
         if (strncasecmp(type, "number", 6) == 0) {
-            CALL_METHOD1(HSJRequest, number, &retval, getThis(), &zvalue);
+            CALL_METHOD1(HSJRequest, number, &retval, getThis(), zvalue);
         } else if (strncasecmp(type, "string", 6) == 0) {
-            CALL_METHOD1(HSJRequest, string, &retval, getThis(), &zvalue);
+            CALL_METHOD1(HSJRequest, string, &retval, getThis(), zvalue);
         } else if (strncasecmp(type, "email", 5) == 0) {
-            CALL_METHOD1(HSJRequest, email, &retval, getThis(), &zvalue);
+            CALL_METHOD1(HSJRequest, email, &retval, getThis(), zvalue);
         } else if (strncasecmp(type, "url", 3) == 0) {
-            CALL_METHOD1(HSJRequest, url, &retval, getThis(), &zvalue);
+            CALL_METHOD1(HSJRequest, url, &retval, getThis(), zvalue);
         } else if (strncasecmp(type, "date", 4) == 0) {
-            CALL_METHOD1(HSJRequest, date, &retval, getThis(), &zvalue);
+            CALL_METHOD1(HSJRequest, date, &retval, getThis(), zvalue);
         } else if (strncasecmp(type, "datetime", 8) == 0) {
-            CALL_METHOD1(HSJRequest, datetime, &retval, getThis(), &zvalue);
+            CALL_METHOD1(HSJRequest, datetime, &retval, getThis(), zvalue);
         } else if (strncasecmp(type, "regex", 5) == 0) {
             zval zpattern;
 
             ZVAL_STRING(&zpattern, pattern, 1);
-            CALL_METHOD2(HSJRequest, regex, &retval, getThis(), &zvalue, &zpattern);
+            CALL_METHOD2(HSJRequest, regex, &retval, getThis(), zvalue, &zpattern);
         }
         check = zend_is_true(&retval) ? 1 : 0;
     } else {
@@ -316,6 +328,10 @@ PHP_METHOD(HSJRequest, verify)
 
     if (!check) {
         zend_update_property_bool(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("valid"), 0 TSRMLS_CC);
+    }
+
+    if (NULL != zvalue) {
+        zval_ptr_dtor(&zvalue);
     }
 
     RETURN_CHAIN();
@@ -335,6 +351,7 @@ PHP_METHOD(HSJRequest, reset)
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
     }
+
     zend_update_property_bool(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("valid"), 1 TSRMLS_CC);
 
     zvars = zend_read_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("vars"), 1 TSRMLS_CC);
@@ -734,58 +751,18 @@ PHP_METHOD(HSJRequest, regex)
  */
 PHP_METHOD(HSJRequest, value)
 {
+    hitsuji_t *hitsuji;
     zval **value;
-    zval *array_ptr = NULL;
-    char *key, *track = NULL;
+    char *key, *track = {"request"};
     uint key_len, track_len;
 
     /* 引数の受け取り */
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|s", &key, &key_len, &track, &track_len) == FAILURE) {
         RETURN_FALSE;
     }
+    hitsuji = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
 
-    if (strncasecmp(track, "post", 4) == 0) {
-        array_ptr = PG(http_globals)[TRACK_VARS_POST];
-    } else if (strncasecmp(track, "get", 3) == 0) {
-        array_ptr = PG(http_globals)[TRACK_VARS_GET];
-    } else if (strncasecmp(track, "cookie", 6) == 0) {
-        array_ptr = PG(http_globals)[TRACK_VARS_COOKIE];
-    } else if (strncasecmp(track, "route", 5) == 0) {
-        hitsuji_t *hitsuji = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
-        array_ptr = zend_read_property(Z_OBJCE_P(hitsuji->router), hitsuji->router, ZEND_STRL("vars"), 1 TSRMLS_CC);
-    } else if (strncasecmp(track, "server", 6) == 0) {
-        array_ptr = PG(http_globals)[TRACK_VARS_SERVER];
-    } else {
-        zval zkey, ztrack;
-
-        ZVAL_STRINGL(&zkey, key, key_len, 1);
-
-        ZVAL_STRING(&ztrack, "post", 1);
-        CALL_METHOD2(HSJRequest, value, return_value, getThis(), &zkey, &ztrack);
-        if (zend_is_true(return_value)) {
-            return;
-        }
-
-        ZVAL_STRING(&ztrack, "get", 1);
-        CALL_METHOD2(HSJRequest, value, return_value, getThis(), &zkey, &ztrack);
-        if (zend_is_true(return_value)) {
-            return;
-        }
-
-        ZVAL_STRING(&ztrack, "route", 1);
-        CALL_METHOD2(HSJRequest, value, return_value, getThis(), &zkey, &ztrack);
-        if (zend_is_true(return_value)) {
-            return;
-        }
-
-        array_ptr = PG(http_globals)[TRACK_VARS_COOKIE];
-    }
-
-    if (SUCCESS == zend_hash_find(Z_ARRVAL_P(array_ptr), key, strlen(key) + 1, (void **) &value)) { 
-        RETURN_ZVAL(*value, 1, 0);
-    }
-
-    RETURN_FALSE;
+    getRequestValue(return_value, key, track, hitsuji->request_ptr);
 }
 
 #   endif       /* #ifndef HAVE_HITSUJI_CLASS_REQUEST */

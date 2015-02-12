@@ -35,9 +35,9 @@
  */
 typedef struct {
     zend_object std;
-    zval actions;
-    zval parses;
-    zval quicks;
+    HashTable *actions;
+    HashTable *parses;
+    HashTable *quicks;
     zval *always;
     zval *done;
     zval *fail;
@@ -50,6 +50,7 @@ PHP_METHOD(HSJDelegate, __construct);
 PHP_METHOD(HSJDelegate, __destruct);
 PHP_METHOD(HSJDelegate, run);
 PHP_METHOD(HSJDelegate, reset);
+PHP_METHOD(HSJDelegate, verifyNonce);
 PHP_METHOD(HSJDelegate, binds);
 PHP_METHOD(HSJDelegate, action);
 PHP_METHOD(HSJDelegate, quick);
@@ -57,7 +58,6 @@ PHP_METHOD(HSJDelegate, parse);
 PHP_METHOD(HSJDelegate, always);
 PHP_METHOD(HSJDelegate, done);
 PHP_METHOD(HSJDelegate, fail);
-PHP_METHOD(HSJDelegate, verifyNonce);
 PHP_METHOD(HSJDelegate, fireAction);
 PHP_METHOD(HSJDelegate, fireQuick);
 PHP_METHOD(HSJDelegate, fireParse);
@@ -98,6 +98,7 @@ zend_function_entry hitsuji_delegate_class_methods[] = {
     PHP_ME(HSJDelegate, __destruct,   HSJDelegate_0_param, ZEND_ACC_PUBLIC | ZEND_ACC_DTOR)
     PHP_ME(HSJDelegate, run,          HSJDelegate_0_param, ZEND_ACC_PUBLIC)
     PHP_ME(HSJDelegate, reset,        HSJDelegate_0_param, ZEND_ACC_PUBLIC)
+    PHP_ME(HSJDelegate, verifyNonce,  HSJDelegate_0_param, ZEND_ACC_PUBLIC)
     PHP_ME(HSJDelegate, binds,        HSJDelegate_1_param, ZEND_ACC_PUBLIC)
     PHP_ME(HSJDelegate, action,       HSJDelegate_1_param, ZEND_ACC_PUBLIC)
     PHP_ME(HSJDelegate, quick,        HSJDelegate_1_param, ZEND_ACC_PUBLIC)
@@ -105,7 +106,6 @@ zend_function_entry hitsuji_delegate_class_methods[] = {
     PHP_ME(HSJDelegate, always,       HSJDelegate_1_param, ZEND_ACC_PUBLIC)
     PHP_ME(HSJDelegate, done,         HSJDelegate_1_param, ZEND_ACC_PUBLIC)
     PHP_ME(HSJDelegate, fail,         HSJDelegate_1_param, ZEND_ACC_PUBLIC)
-    PHP_ME(HSJDelegate, verifyNonce,  HSJDelegate_0_param, ZEND_ACC_PUBLIC)
     PHP_ME(HSJDelegate, fireAction,   HSJDelegate_1_param, ZEND_ACC_PUBLIC)
     PHP_ME(HSJDelegate, fireQuick,    HSJDelegate_1_param, ZEND_ACC_PUBLIC)
     PHP_ME(HSJDelegate, fireParse,    HSJDelegate_1_param, ZEND_ACC_PUBLIC)
@@ -130,9 +130,14 @@ PHP_METHOD(HSJDelegate, __construct)
     }
     self = (hitsuji_delegate_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    array_init(&self->actions);
-    array_init(&self->parses);
-    array_init(&self->quicks);
+    ALLOC_HASHTABLE(self->actions);
+    zend_hash_init(self->actions, 0, NULL, ZVAL_PTR_DTOR, 0);
+
+    ALLOC_HASHTABLE(self->parses);
+    zend_hash_init(self->parses, 0, NULL, ZVAL_PTR_DTOR, 0);
+
+    ALLOC_HASHTABLE(self->quicks);
+    zend_hash_init(self->quicks, 0, NULL, ZVAL_PTR_DTOR, 0);
 }
 
 /**
@@ -149,6 +154,32 @@ PHP_METHOD(HSJDelegate, __destruct)
     }
 
     self = (hitsuji_delegate_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
+
+    if (NULL != self->fail) {
+        zval_ptr_dtor(&self->fail);
+    }
+    if (NULL != self->done) {
+        zval_ptr_dtor(&self->done);
+    }
+
+    if (NULL != self->always) {
+        zval_ptr_dtor(&self->always);
+    }
+
+    if (NULL != self->quicks) {
+        zend_hash_destroy(self->quicks);
+        FREE_HASHTABLE(self->quicks);
+    }
+
+    if (NULL != self->parses) {
+        zend_hash_destroy(self->parses);
+        FREE_HASHTABLE(self->parses);
+    }
+
+    if (NULL != self->actions) {
+        zend_hash_destroy(self->actions);
+        FREE_HASHTABLE(self->actions);
+    }
 }
 
 /**
@@ -161,7 +192,8 @@ PHP_METHOD(HSJDelegate, run)
 {
     hitsuji_delegate_t *self;
     hitsuji_t *hitsuji;
-    zval retval, retvalues, retnonce, *zvars, zvalues;
+    zval retval, _retval, retnonce, *zvars;
+    zval parsed;
 
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
@@ -172,8 +204,9 @@ PHP_METHOD(HSJDelegate, run)
     zvars = zend_read_property(Z_OBJCE_P(hitsuji->request), hitsuji->request, ZEND_STRL("vars"), 1 TSRMLS_CC);
 
     /* parseコールバック実行 */
-    CALL_METHOD1(HSJDelegate, fireParse, zvars, getThis(), zvars);
-
+    if (zend_hash_num_elements(self->parses) != 0) {
+        zvars = hitsuji_calls_function_1_params(self->parses, &retval, zvars);
+    }
     /* nonce値の確認 */
     CALL_METHOD(HSJDelegate, verifyNonce, &retnonce, getThis());
 
@@ -183,30 +216,36 @@ PHP_METHOD(HSJDelegate, run)
 
         if (zend_is_true(verified)) {
             /* actionコールバック実行 */
-            CALL_METHOD1(HSJDelegate, fireAction, &retvalues, getThis(), zvars);
+            zvars = hitsuji_calls_function_1_params(self->actions, &_retval, zvars);
 
-            if (array_bool_data(&retvalues, &zvalues)) {
-                CALL_METHOD1(HSJDelegate, fireDone, &retval, getThis(), &zvalues);
+            if (array_bool_data(&zvars)) {
+                hitsuji_call_function_1_params(self->done, NULL, zvars);
             } else {
-                CALL_METHOD2(HSJDelegate, fireFail, &retval, getThis(), &zvalues, zchecked);
+                hitsuji_call_function_2_params(self->fail, NULL, zvars, zchecked);
             }
         } else {
-            CALL_METHOD2(HSJDelegate, fireFail, &retval, getThis(), zvars, zchecked);
+            hitsuji_call_function_2_params(self->fail, NULL, zvars, zchecked);
         }
+        zval_ptr_dtor(&zchecked);
+        zval_ptr_dtor(&verified);
     } else {
-        if (zend_hash_num_elements(Z_ARRVAL(self->quicks)) == 0) {
+        zval _retval;
+        if (zend_hash_num_elements(self->quicks) == 0) {
             /* alwaysコールバック実行 */
-            CALL_METHOD1(HSJDelegate, fireAlways, &retval, getThis(), zvars);
+            zvars = hitsuji_calls_function_1_params(self->always, &_retval, zvars);
         } else {
             /* actionコールバック実行 */
-            CALL_METHOD1(HSJDelegate, fireQuick, &retvalues, getThis(), zvars);
-            if (array_bool_data(&retvalues, &zvalues)) {
-                CALL_METHOD1(HSJDelegate, fireDone, &retval, getThis(), &zvalues);
+            zvars = hitsuji_calls_function_1_params(self->quicks, &_retval, zvars);
+
+            if (array_bool_data(zvars)) {
+                hitsuji_call_function_1_params(self->done, NULL, zvars);
             } else {
-                CALL_METHOD1(HSJDelegate, fireAlways, &retval, getThis(), &zvalues);
+                hitsuji_call_function_1_params(self->always, NULL, zvars);
             }
         }
     }
+    zval_ptr_dtor(&zvars);
+
     RETURN_CHAIN();
 }
 
@@ -225,11 +264,58 @@ PHP_METHOD(HSJDelegate, reset)
     }
     self = (hitsuji_delegate_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    array_all_clean(&self->actions);
-    array_all_clean(&self->parses);
-    array_all_clean(&self->quicks);
+    hash_all_clean(self->actions);
+    hash_all_clean(self->parses);
+    hash_all_clean(self->quicks);
 
     RETURN_CHAIN();
+}
+
+/**
+ * nonce値の確認
+ *
+ * @access public
+ * @return boolean
+ */
+PHP_METHOD(HSJDelegate, verifyNonce)
+{
+    hitsuji_t *hitsuji;
+    zval *zpage, zkey, ztrack, znonce, *znmake = NULL;
+    char *nonce, *nmake;
+    int  result = 0;
+
+    if (zend_parse_parameters_none() != SUCCESS) {
+        RETURN_FALSE;
+    }
+
+    /* フォームからのnonce値の取得 */
+    hitsuji = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
+    if (!getRequestValue(&znonce, "nonce", "request", hitsuji->request_ptr)) {
+        RETURN_FALSE;
+    }
+
+    /* アクセスしているpageパスの取得 */
+    zpage = zend_read_property(Z_OBJCE_P(hitsuji->router), hitsuji->router, ZEND_STRL("page"), 1 TSRMLS_CC);
+
+    /* nonce値の生成 */
+    zend_call_method_with_1_params(
+        (zval **)&hitsuji->bootstrap, 
+        Z_OBJCE_P(hitsuji->bootstrap), 
+        NULL, 
+        "nonce", 
+        (zval **)&znmake, 
+        zpage
+    );
+
+    /* nonce値の比較 */
+    result = strncasecmp(Z_STRVAL(znonce), Z_STRVAL_P(znmake), Z_STRLEN_P(znmake));
+    zval_ptr_dtor(&znmake);
+
+    if (result != 0) {
+        RETURN_FALSE;
+    }
+
+    RETURN_TRUE;
 }
 
 /**
@@ -242,17 +328,30 @@ PHP_METHOD(HSJDelegate, reset)
 PHP_METHOD(HSJDelegate, binds)
 {
     hitsuji_t *hitsuji;
-    zval *array;
-    zval zrequest, retval;
+    zval *array = NULL;
 
     /* 引数の受け取り */
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &array) == FAILURE) {
         RETURN_FALSE;
     }
-    hitsuji = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
 
-    CALL_METHOD(HSJRequest,  reset,    &retval, hitsuji->request);
-    CALL_METHOD1(HSJRequest, verifies, &retval, hitsuji->request, array);
+    hitsuji = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
+    zend_call_method_with_0_params(
+        (zval **)&hitsuji->request, 
+        Z_OBJCE_P(hitsuji->request), 
+        NULL, 
+        "reset", 
+        NULL
+    );
+
+    zend_call_method_with_1_params(
+        (zval **)&hitsuji->request, 
+        Z_OBJCE_P(hitsuji->request), 
+        NULL, 
+        "verifies", 
+        NULL, 
+        array
+    );
 
     RETURN_CHAIN();
 }
@@ -284,7 +383,7 @@ PHP_METHOD(HSJDelegate, action)
     Z_ADDREF_P(callable);
 
     /* ハッシュテーブルへ登録 */
-    zend_hash_next_index_insert(Z_ARRVAL(self->actions), (void *)&callable, sizeof(zval *), NULL);
+    zend_hash_next_index_insert(self->actions, (void *)&callable, sizeof(zval *), NULL);
 
     RETURN_CHAIN();
 }
@@ -316,7 +415,7 @@ PHP_METHOD(HSJDelegate, quick)
     Z_ADDREF_P(callable);
 
     /* ハッシュテーブルへ登録 */
-    zend_hash_next_index_insert(Z_ARRVAL(self->quicks), (void *)&callable, sizeof(zval *), NULL);
+    zend_hash_next_index_insert(self->quicks, (void *)&callable, sizeof(zval *), NULL);
 
     RETURN_CHAIN();
 }
@@ -347,7 +446,7 @@ PHP_METHOD(HSJDelegate, parse)
     Z_ADDREF_P(callable);
 
     /* ハッシュテーブルへ登録 */
-    zend_hash_next_index_insert(Z_ARRVAL(self->parses), (void *)&callable, sizeof(zval *), NULL);
+    zend_hash_next_index_insert(self->parses, (void *)&callable, sizeof(zval *), NULL);
 
     RETURN_CHAIN();
 }
@@ -440,45 +539,6 @@ PHP_METHOD(HSJDelegate, fail)
 }
 
 /**
- * nonce値の確認
- *
- * @access public
- * @return boolean
- */
-PHP_METHOD(HSJDelegate, verifyNonce)
-{
-    hitsuji_t *hitsuji;
-    zval *zpage, zkey, ztrack, znonce, znmake;
-    char *nonce, *nmake;
-
-    if (zend_parse_parameters_none() != SUCCESS) {
-        RETURN_FALSE;
-    }
-    hitsuji = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
-
-    /* フォームからのnonce値の取得 */
-    ZVAL_STRING(&zkey, "nonce", 1);
-    ZVAL_STRING(&ztrack, "request", 1);
-    CALL_METHOD2(HSJRequest, value, &znonce, hitsuji->request, &zkey, &ztrack);
-    if (!zend_is_true(&znonce)) {
-        RETURN_FALSE;
-    }
-
-    /* アクセスしているpageパスの取得 */
-    zpage = zend_read_property(Z_OBJCE_P(hitsuji->router), hitsuji->router, ZEND_STRL("page"), 1 TSRMLS_CC);
-
-    /* nonce値の生成 */
-    CALL_METHOD1(hitSuji, makeNonce, &znmake, hitsuji_object_ptr, zpage);
-
-    /* nonce値の比較 */
-    if (strncasecmp(Z_STRVAL(znonce), Z_STRVAL(znmake), Z_STRLEN(znmake)) != 0) {
-        RETURN_FALSE;
-    }
-
-    RETURN_TRUE;
-}
-
-/**
  * アクション処理の実行
  *
  * @access public
@@ -487,9 +547,7 @@ PHP_METHOD(HSJDelegate, verifyNonce)
 PHP_METHOD(HSJDelegate, fireAction)
 {
     hitsuji_delegate_t *self;
-    HashPosition pos;
-    zval **callable, *zvars;
-    zval *retval_ptr = NULL;
+    zval *zvars, retval, *retval_ptr;
 
     /* 引数の受け取り */
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &zvars) == FAILURE) {
@@ -497,18 +555,10 @@ PHP_METHOD(HSJDelegate, fireAction)
     }
     self = (hitsuji_delegate_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    if (zend_hash_num_elements(Z_ARRVAL(self->actions)) == 0) {
-        RETURN_TRUE;
-    }
+    retval_ptr = hitsuji_calls_function_1_params(self->actions, &retval, zvars);
 
-    for (zend_hash_internal_pointer_reset_ex(Z_ARRVAL(self->actions), &pos);
-         zend_hash_get_current_data_ex(Z_ARRVAL(self->actions), (void **)&callable, &pos) == SUCCESS;
-         zend_hash_move_forward_ex(Z_ARRVAL(self->actions), &pos)
-    ) {
-        hitsuji_call_function_1_params(*callable, retval_ptr, zvars);
-    }
-
-    RETURN_ZVAL(retval_ptr, 1, 0);
+    RETVAL_ZVAL(retval_ptr, 1, 1);
+    zval_ptr_dtor(&retval_ptr);
 }
 
 /**
@@ -520,9 +570,7 @@ PHP_METHOD(HSJDelegate, fireAction)
 PHP_METHOD(HSJDelegate, fireQuick)
 {
     hitsuji_delegate_t *self;
-    HashPosition pos;
-    zval **callable, *zvars;
-    zval *retval_ptr = NULL;
+    zval *zvars, retval, *retval_ptr;
 
     /* 引数の受け取り */
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &zvars) == FAILURE) {
@@ -530,18 +578,10 @@ PHP_METHOD(HSJDelegate, fireQuick)
     }
     self = (hitsuji_delegate_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    if (zend_hash_num_elements(Z_ARRVAL(self->quicks)) == 0) {
-        RETURN_TRUE;
-    }
+    retval_ptr = hitsuji_calls_function_1_params(self->quicks, &retval, zvars);
 
-    for (zend_hash_internal_pointer_reset_ex(Z_ARRVAL(self->quicks), &pos);
-         zend_hash_get_current_data_ex(Z_ARRVAL(self->quicks), (void **)&callable, &pos) == SUCCESS;
-         zend_hash_move_forward_ex(Z_ARRVAL(self->quicks), &pos)
-    ) {
-        hitsuji_call_function_1_params(*callable, retval_ptr, zvars);
-    }
-
-    RETURN_ZVAL(retval_ptr, 1, 0);
+    RETVAL_ZVAL(retval_ptr, 1, 1);
+    zval_ptr_dtor(&retval_ptr);
 }
 
 /**
@@ -554,9 +594,7 @@ PHP_METHOD(HSJDelegate, fireQuick)
 PHP_METHOD(HSJDelegate, fireParse)
 {
     hitsuji_delegate_t *self;
-    HashPosition pos;
-    zval **callable, *zvars;
-    zval *retval_ptr = NULL;
+    zval *zvars, retval, *retval_ptr;
 
     /* 引数の受け取り */
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &zvars) == FAILURE) {
@@ -564,19 +602,10 @@ PHP_METHOD(HSJDelegate, fireParse)
     }
     self = (hitsuji_delegate_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    if (zend_hash_num_elements(Z_ARRVAL(self->parses)) == 0) {
-        RETURN_TRUE;
-    }
+    retval_ptr = hitsuji_calls_function_1_params(self->parses, &retval, zvars);
 
-    for (zend_hash_internal_pointer_reset_ex(Z_ARRVAL(self->parses), &pos);
-         zend_hash_get_current_data_ex(Z_ARRVAL(self->parses), (void **)&callable, &pos) == SUCCESS;
-         zend_hash_move_forward_ex(Z_ARRVAL(self->parses), &pos)
-    ) {
-        if (hitsuji_call_function_1_params(*callable, retval_ptr, zvars)) {
-            ZVAL_ZVAL(zvars, retval_ptr, 0, 0);
-        }
-    }
-    RETURN_ZVAL(retval_ptr, 1, 0);
+    RETVAL_ZVAL(retval_ptr, 1, 1);
+    zval_ptr_dtor(&retval_ptr);
 }
 
 /**
@@ -589,8 +618,7 @@ PHP_METHOD(HSJDelegate, fireParse)
 PHP_METHOD(HSJDelegate, fireAlways)
 {
     hitsuji_delegate_t *self;
-    zval **callable, *zvars;
-    zval *retval_ptr = NULL;
+    zval *zvars;
 
     /* 引数の受け取り */
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &zvars) == FAILURE) {
@@ -598,10 +626,9 @@ PHP_METHOD(HSJDelegate, fireAlways)
     }
     self = (hitsuji_delegate_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    if (hitsuji_call_function_1_params(self->always, retval_ptr, zvars)){
-        RETURN_ZVAL(retval_ptr, 1, 0);
-    }
-    RETURN_FALSE;
+    hitsuji_call_function_1_params(self->always, NULL, zvars);
+
+    RETURN_TRUE;
 }
 
 /**
@@ -614,8 +641,7 @@ PHP_METHOD(HSJDelegate, fireAlways)
 PHP_METHOD(HSJDelegate, fireDone)
 {
     hitsuji_delegate_t *self;
-    zval **callable, *zvars;
-    zval *retval_ptr = NULL;
+    zval *zvars;
 
     /* 引数の受け取り */
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &zvars) == FAILURE) {
@@ -623,10 +649,9 @@ PHP_METHOD(HSJDelegate, fireDone)
     }
     self = (hitsuji_delegate_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    if (hitsuji_call_function_1_params(self->done, retval_ptr, zvars)){
-        RETURN_ZVAL(retval_ptr, 1, 0);
-    }
-    RETURN_FALSE;
+    hitsuji_call_function_1_params(self->done, NULL, zvars);
+
+    RETURN_TRUE;
 }
 
 /**
@@ -640,8 +665,7 @@ PHP_METHOD(HSJDelegate, fireDone)
 PHP_METHOD(HSJDelegate, fireFail)
 {
     hitsuji_delegate_t *self;
-    zval **callable, *zvars, *zchecked;
-    zval *retval_ptr = NULL;
+    zval *zvars, *zchecked;
 
     /* 引数の受け取り */
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "zz", &zvars, &zchecked) == FAILURE) {
@@ -649,10 +673,9 @@ PHP_METHOD(HSJDelegate, fireFail)
     }
     self = (hitsuji_delegate_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    if (hitsuji_call_function_2_params(self->fail, retval_ptr, zvars, zchecked)){
-        RETURN_ZVAL(retval_ptr, 1, 0);
-    }
-    RETURN_FALSE;
+    hitsuji_call_function_2_params(self->fail, NULL, zvars, zchecked);
+
+    RETURN_TRUE;
 }
 
 #   endif       /* #ifndef HAVE_HITSUJI_CLASS_DELEGATE */

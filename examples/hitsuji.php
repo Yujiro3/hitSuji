@@ -20,3 +20,12 @@ php -d extension=modules/hitsuji.so -f examples/hitsuji.php
 namespace hitSuji;
 
 include 'skel/bootstrap.php';
+
+$dir = \hitSuji::dir('tpl');
+var_dump($dir);
+
+$pattern = \hitSuji::pattern('string');
+var_dump($pattern);
+
+$nonce = \hitSuji::makeNonce('/user/:id');
+var_dump($nonce);
