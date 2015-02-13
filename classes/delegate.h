@@ -167,17 +167,23 @@ PHP_METHOD(HSJDelegate, __destruct)
     }
 
     if (NULL != self->quicks) {
+#if PHP_VERSION_ID > 50520
         zend_hash_destroy(self->quicks);
+#endif
         FREE_HASHTABLE(self->quicks);
     }
 
     if (NULL != self->parses) {
+#if PHP_VERSION_ID > 50520
         zend_hash_destroy(self->parses);
+#endif
         FREE_HASHTABLE(self->parses);
     }
 
     if (NULL != self->actions) {
+#if PHP_VERSION_ID > 50520
         zend_hash_destroy(self->actions);
+#endif
         FREE_HASHTABLE(self->actions);
     }
 }
@@ -243,7 +249,9 @@ PHP_METHOD(HSJDelegate, run)
             }
         }
     }
-    zval_ptr_dtor(&zvars);
+    if (NULL != zvars) {
+        zval_ptr_dtor(&zvars);
+    }
 
     RETURN_CHAIN();
 }

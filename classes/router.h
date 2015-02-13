@@ -155,7 +155,9 @@ PHP_METHOD(HSJRouter, __destruct)
     }
 
     if (NULL != self->routes) {
+#if PHP_VERSION_ID > 50520
         zend_hash_destroy(self->routes);
+#endif
         FREE_HASHTABLE(self->routes);
     }
 

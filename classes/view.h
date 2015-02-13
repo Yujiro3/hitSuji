@@ -281,7 +281,7 @@ PHP_METHOD(HSJView, display)
     strcat(filename, Z_STRVAL_P(zlayout));
 
     /* 外部ファイルの読み込み */
-    if (php_stream_open_for_zend_ex("/home/yujiro/phpext/hitSuji/examples/skel/app/templates/layout.tpl", &file_handle, USE_PATH | STREAM_OPEN_FOR_INCLUDE TSRMLS_CC) == SUCCESS) {
+    if (php_stream_open_for_zend_ex(filename, &file_handle, USE_PATH | STREAM_OPEN_FOR_INCLUDE TSRMLS_CC) == SUCCESS) {
         zend_try {
             /* 実行前の状態を退避 */
             zend_op **orig_opline_ptr = EG(opline_ptr);
