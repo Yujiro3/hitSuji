@@ -441,6 +441,7 @@ int hitsuji_verify(const char *key, zval *options)
                 type = Z_STRVAL_PP(element);
             } else if (strncasecmp(Z_STRVAL_PP(element), "post", 4) == 0 || 
                        strncasecmp(Z_STRVAL_PP(element), "get", 3) == 0 || 
+                       strncasecmp(Z_STRVAL_PP(element), "route", 5) == 0 || 
                        strncasecmp(Z_STRVAL_PP(element), "cookie", 6) == 0 || 
                        strncasecmp(Z_STRVAL_PP(element), "server", 6) == 0|| 
                        strncasecmp(Z_STRVAL_PP(element), "request", 7) == 0) 

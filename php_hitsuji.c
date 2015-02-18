@@ -134,7 +134,6 @@ static void php_hitsuji_init_globals(zend_hitsuji_globals *hitsuji_globals)
     hitsuji_globals->checks = NULL;
     hitsuji_globals->vars = NULL;
     hitsuji_globals->routes = NULL;
-    hitsuji_globals->requests = NULL;
     hitsuji_globals->page = NULL;
 
     ALLOC_INIT_ZVAL(hitsuji_globals->requests);

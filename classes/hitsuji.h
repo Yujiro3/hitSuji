@@ -342,6 +342,7 @@ PHP_METHOD(hitSuji, delegate)
                         ALLOC_INIT_ZVAL(HITSUJI_G(checks));
                         array_init(HITSUJI_G(checks));
                     }
+
                     valid = hitsuji_verifies(*row);
                 }
             } else {
