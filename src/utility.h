@@ -30,9 +30,9 @@
 #ifndef HAVE_HITSUJI_UTILITY_H
 #define HAVE_HITSUJI_UTILITY_H
 
-char *getDir(const char *key);
-char *getPattern(const char *key);
-zval *makeNonce(zval *retval_ptr, zval *seed);
-int getRequestValue(zval *retval_p, const char *key, const char *track, zval *request_ptr);
+extern ZEND_DECLARE_MODULE_GLOBALS(hitsuji);
+
+int getRequestValue(zval *retval_p, const char *key, const char *track);
+char *getNonce(const char *seed);
 
 #endif  // #ifndef HAVE_HITSUJI_UTILITY_H

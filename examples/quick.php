@@ -14,30 +14,18 @@
  */
 
 /*
-php -d extension=modules/hitsuji.so -f examples/delegate.php
+php -d extension=modules/hitsuji.so -f examples/quick.php
 */
 
-hitSuji::delegate([
-    'data' => [
-        'sid'=> 'sid90'
-    ],
-    'bind' => [
-        'PWD' => ['string', 'require', 'server'],
-        'MAIL'=> ['server'],
-    ],
+hitSuji::quick([
+    'data' => ['id'=> 3],
     'parse'=> function ($data) {
         echo "parse\n";
-        print_r($data);
         return $data;
     },
     'action'=> function ($data) {
         echo "action\n";
-        print_r($data);
         return [true, $data];
-    },
-    'always' => function ($data) {
-        echo "always\n";
-        print_r($data);
     },
     'done' => function ($data) {
         echo "done\n";
@@ -48,4 +36,3 @@ hitSuji::delegate([
         print_r($data);
     }
 ]);
-

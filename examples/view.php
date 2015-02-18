@@ -17,7 +17,7 @@
 php -d extension=modules/hitsuji.so -f examples/view.php
 */
 
-include 'skel/bootstrap.php';
+ini_set('hitsuji.template_path', dirname(__FILE__).'/skel/app/templates/');
 
 $view = hitSuji::view();
 

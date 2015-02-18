@@ -32,8 +32,6 @@
 
 zend_object_value hitsuji_ctor(zend_class_entry *ce TSRMLS_DC);
 zend_object_value hitsuji_router_ctor(zend_class_entry *ce TSRMLS_DC);
-zend_object_value hitsuji_request_ctor(zend_class_entry *ce TSRMLS_DC);
-zend_object_value hitsuji_delegate_ctor(zend_class_entry *ce TSRMLS_DC);
 zend_object_value hitsuji_view_ctor(zend_class_entry *ce TSRMLS_DC);
 
 #endif  // #ifndef HAVE_HITSUJI_OBJECT_H

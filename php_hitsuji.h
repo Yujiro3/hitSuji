@@ -46,22 +46,39 @@
 
 extern zend_class_entry *hitsuji_ce;
 extern zend_class_entry *hitsuji_router_ce;
-extern zend_class_entry *hitsuji_request_ce;
-extern zend_class_entry *hitsuji_delegate_ce;
 extern zend_class_entry *hitsuji_view_ce;
 extern zend_class_entry *hitsuji_exception_ce;
-
-extern zval *hitsuji_object_ptr;
-
-
+/*
 extern zend_module_entry hitsuji_module_entry;
 #define phpext_hitsuji_ptr &hitsuji_module_entry
-
+*/
 PHP_MINIT_FUNCTION(hitSuji);
 PHP_MSHUTDOWN_FUNCTION(hitSuji);
 PHP_RINIT_FUNCTION(hitSuji);
 PHP_RSHUTDOWN_FUNCTION(hitSuji);
 PHP_MINFO_FUNCTION(hitSuji);
+
+
+/**
+ * グローバル変数用構造体
+ */
+ZEND_BEGIN_MODULE_GLOBALS(hitsuji)
+    char *nonce_function;
+    long lifetime;
+    char *seed;
+    char *template_path;
+    char *page_path;
+    char *string_pattern;
+    char *email_pattern;
+    char *date_pattern;
+    char *datetime_pattern;
+
+    zval *page;
+    zval *checks;
+    zval *vars;
+    zval *routes;
+    zval *requests;
+ZEND_END_MODULE_GLOBALS(hitsuji)
 
 /**
  * メンバー定数定義:定型マクロ
@@ -130,16 +147,8 @@ PHP_MINFO_FUNCTION(hitSuji);
 #   include "classes/router.h"
 #endif
 
-#ifndef HAVE_HITSUJI_CLASS_REQUEST_H
-#   include "classes/request.h"
-#endif
-
 #ifndef HAVE_HITSUJI_CLASS_VIEW_H
 #   include "classes/view.h"
-#endif
-
-#ifndef HAVE_HITSUJI_CLASS_DELEGATE_H
-#   include "classes/delegate.h"
 #endif
 
 #endif    /* HAVE_PHP_HITSUJI_H */

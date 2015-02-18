@@ -60,13 +60,24 @@ HTML;
 $template = hitSuji::view();
 $template->layout('layout.tpl');
 
-hitSuji::delegate(
-)->binds(
-    array(
-        'name' => array('string', 'require'),
+hitSuji::delegate([
+    /**
+     * 直データ
+     *
+     * @var array
+     */
+    'data' => [
+        'sid'=> 'sid90'
+    ],
+    /**
+     * 入力データ定義
+     *
+     * @var array
+     */
+    'bind' => [
+        'name' => ['string', 'require'],
         'uid'  => 'number',
-    )
-)->parse(
+    ],
     /**
      * パース処理
      *
@@ -74,11 +85,10 @@ hitSuji::delegate(
      * @param array $data
      * @return array
      */
-    function ($data) {
+    'parse'=> function ($data) {
         $data['name'] = strtolower($data['name']);
         return $data;
-    }
-)->action(
+    },
     /**
      * アクション処理
      *
@@ -86,7 +96,7 @@ hitSuji::delegate(
      * @param array $data
      * @return array
      */
-    function ($data) {
+    'action'=> function ($data) {
         $gdb = new Groonga('./db/test.db');
         return $gdb->table('Users')
                    ->select()
@@ -94,20 +104,19 @@ hitSuji::delegate(
                    ->query($data['name'])
                    ->outputColumns('_key,name')
                    ->exec(true);
-    }
-)->always(
+    },
     /**
-     * デフォルト処理
+     * 成功時処理
      *
      * @access public
      * @param array $values
      * @return void
      */
-    function ($values) use($template) {
-        $template->content('default.tpl');
+    'always' => function ($values) use($template) {
+        $template->content('success.tpl');
+        $template->assigns($values);
         $template->display();
-    }
-)->done(
+    },
     /**
      * 成功時処理
      *
@@ -119,8 +128,7 @@ hitSuji::delegate(
         $template->content('success.tpl');
         $template->assigns($values);
         $template->display();
-    }
-)->fail(
+    },
     /**
      * 失敗時処理
      *
@@ -134,13 +142,14 @@ hitSuji::delegate(
         $template->assign('error', 'エラーです。');
         $template->display();
     }
-)->run();
+]);
+
 ```
     
 
 ライセンス
 ----------
-Copyright &copy; 2014 Yujiro Takahashi  
+Copyright &copy; 2015 Yujiro Takahashi  
 Licensed under the [MIT License][MIT].  
 Distributed under the [MIT License][MIT].  
 

@@ -27,23 +27,12 @@
  * @filesource
  */
 
-#ifndef HAVE_HITSUJI_ARRAY_H
-#define HAVE_HITSUJI_ARRAY_H
+#ifndef HAVE_HITSUJI_VALIDATE_H
+#define HAVE_HITSUJI_VALIDATE_H
 
-/**
- * インデックス削除用
- */
-typedef struct {
-    ulong index;
-    int flag;
-} array_trim_index_t;
+extern ZEND_DECLARE_MODULE_GLOBALS(hitsuji);
 
+int hitsuji_verify(const char *key, zval *options);
+int hitsuji_verifies(zval *array);
 
-void hash_trim_index(HashTable *array);
-void hash_all_clean(HashTable *array);
-
-void array_trim_index(zval *array);
-void array_all_clean(zval *array);
-zval *array_bool_data(int *result, zval *array);
-
-#endif  // #ifndef HAVE_HITSUJI_ARRAY_H
+#endif  // #ifndef HAVE_HITSUJI_VALIDATE_H

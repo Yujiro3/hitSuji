@@ -61,13 +61,16 @@
 #   include "src/utility.h"
 #endif
 
+#ifndef HAVE_HITSUJI_VALIDATE_H
+#   include "src/validate.h"
+#endif
+
 #ifndef HAVE_HITSUJI_OBJECT_H
 #   include "src/object.h"
 #endif
 
-/* If you declare any globals in php_hitsuji.h uncomment this:
-ZEND_DECLARE_MODULE_GLOBALS(hitSuji)
-*/
+/* グローバル変数宣言 */
+ZEND_DECLARE_MODULE_GLOBALS(hitsuji)
 
 /* True global resources - no need for thread safety here */
 static int le_hitsuji;
@@ -75,12 +78,8 @@ static int le_hitsuji;
 /* クラス構造体 */
 zend_class_entry *hitsuji_ce = NULL;
 zend_class_entry *hitsuji_router_ce = NULL;
-zend_class_entry *hitsuji_request_ce = NULL;
-zend_class_entry *hitsuji_delegate_ce = NULL;
 zend_class_entry *hitsuji_view_ce = NULL;
 zend_class_entry *hitsuji_exception_ce = NULL;
-
-zval *hitsuji_object_ptr = NULL;
 
 /**
  * モジュール情報リスト
@@ -104,6 +103,38 @@ zend_module_entry hitSuji_module_entry = {
     ZEND_GET_MODULE(hitSuji)
 #endif
 
+
+/**
+ * 実行時設定
+ *
+ */
+PHP_INI_BEGIN()
+    STD_PHP_INI_ENTRY("hitsuji.nonce_function", "", PHP_INI_ALL, OnUpdateString, nonce_function, zend_hitsuji_globals, hitsuji_globals)
+    STD_PHP_INI_ENTRY("hitsuji.lifetime", "28800", PHP_INI_ALL, OnUpdateLong, lifetime, zend_hitsuji_globals, hitsuji_globals)
+    STD_PHP_INI_ENTRY("hitsuji.seed", "asdfj5246485902rweld", PHP_INI_ALL, OnUpdateString, seed, zend_hitsuji_globals, hitsuji_globals)
+    STD_PHP_INI_ENTRY("hitsuji.template_path", "", PHP_INI_ALL, OnUpdateString, template_path, zend_hitsuji_globals, hitsuji_globals)
+    STD_PHP_INI_ENTRY("hitsuji.page_path", "", PHP_INI_ALL, OnUpdateString, page_path, zend_hitsuji_globals, hitsuji_globals)
+    STD_PHP_INI_ENTRY("hitsuji.string_pattern", "/[^\\/]/i", PHP_INI_ALL, OnUpdateString, string_pattern, zend_hitsuji_globals, hitsuji_globals)
+    STD_PHP_INI_ENTRY("hitsuji.email_pattern", "/^(([^<>()[\\]\\\\.,;:\\s@\\\"]+(\\.[^<>()[\\]\\\\.,;:\\s@\\\"]+)*)|(\\\".+\\\"))@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\])|(([a-zA-Z\\-0-9]+\\.)+[a-zA-Z]{2,}))$/", PHP_INI_ALL, OnUpdateString, email_pattern, zend_hitsuji_globals, hitsuji_globals)
+    STD_PHP_INI_ENTRY("hitsuji.date_pattern", "/[0-9]{4}\\-?[0-9]{2}\\-?[0-9]{2}/", PHP_INI_ALL, OnUpdateString, date_pattern, zend_hitsuji_globals, hitsuji_globals)
+    STD_PHP_INI_ENTRY("hitsuji.datetime_pattern", "/[0-9]{4}\\-?[0-9]{2}\\-?[0-9]{2}\\s?[0-9]{2}:?[0-9]{2}\\:?[0-9]{2}/", PHP_INI_ALL, OnUpdateString, datetime_pattern, zend_hitsuji_globals, hitsuji_globals)
+PHP_INI_END()
+
+/**
+ * グローバル変数の初期化処理
+ *
+ * @param module
+ * @return int
+ */
+static void php_hitsuji_init_globals(zend_hitsuji_globals *hitsuji_globals)
+{
+    hitsuji_globals->checks = NULL;
+    hitsuji_globals->vars = NULL;
+    hitsuji_globals->routes = NULL;
+    hitsuji_globals->requests = NULL;
+    hitsuji_globals->page = NULL;
+}
+
 /**
  * モジュールメイン初期化処理
  *
@@ -113,6 +144,9 @@ zend_module_entry hitSuji_module_entry = {
 PHP_MINIT_FUNCTION(hitSuji)
 {
     zend_class_entry ce;
+
+    REGISTER_INI_ENTRIES();
+    ZEND_INIT_MODULE_GLOBALS(hitsuji, php_hitsuji_init_globals, NULL);
 
     /* hitSujiクラスの登録 */
     INIT_CLASS_ENTRY(ce, "hitSuji", hitsuji_class_methods);
@@ -126,19 +160,6 @@ PHP_MINIT_FUNCTION(hitSuji)
     hitsuji_router_ce->create_object = hitsuji_router_ctor;
     zend_declare_property_string(hitsuji_router_ce, ZEND_STRL("page"), "", ZEND_ACC_PUBLIC TSRMLS_CC);
     zend_declare_property_null(hitsuji_router_ce,   ZEND_STRL("vars"),     ZEND_ACC_PUBLIC TSRMLS_CC);
-
-    /* requestクラスの登録 */
-    INIT_CLASS_ENTRY(ce, "hitSuji\\Request", hitsuji_request_class_methods);
-    hitsuji_request_ce = zend_register_internal_class(&ce TSRMLS_CC);
-    hitsuji_request_ce->create_object = hitsuji_request_ctor;
-    zend_declare_property_bool(hitsuji_request_ce, ZEND_STRL("valid"), 1, ZEND_ACC_PUBLIC TSRMLS_CC);
-    zend_declare_property_null(hitsuji_request_ce, ZEND_STRL("vars"),     ZEND_ACC_PUBLIC TSRMLS_CC);
-    zend_declare_property_null(hitsuji_request_ce, ZEND_STRL("checked"),  ZEND_ACC_PUBLIC TSRMLS_CC);
-
-    /* delegateクラスの登録 */
-    INIT_CLASS_ENTRY(ce, "hitSuji\\Delegate", hitsuji_delegate_class_methods);
-    hitsuji_delegate_ce = zend_register_internal_class(&ce TSRMLS_CC);
-    hitsuji_delegate_ce->create_object = hitsuji_delegate_ctor;
 
     /* viewクラスの登録 */
     INIT_CLASS_ENTRY(ce, "hitSuji\\View", hitsuji_view_class_methods);
@@ -164,8 +185,32 @@ PHP_MINIT_FUNCTION(hitSuji)
  */
 PHP_MSHUTDOWN_FUNCTION(hitSuji)
 {
-    /* グローバル変数 */
-    hitsuji_object_ptr = NULL;
+    if (NULL != HITSUJI_G(page)) {
+        zval_ptr_dtor(&HITSUJI_G(page));
+        HITSUJI_G(page) = NULL;
+    }
+
+    if (NULL != HITSUJI_G(requests)) {
+        zval_ptr_dtor(&HITSUJI_G(requests));
+        HITSUJI_G(requests) = NULL;
+    }
+
+    if (NULL != HITSUJI_G(routes)) {
+        zval_ptr_dtor(&HITSUJI_G(routes));
+        HITSUJI_G(routes) = NULL;
+    }
+
+    if (NULL != HITSUJI_G(vars)) {
+        zval_ptr_dtor(&HITSUJI_G(vars));
+        HITSUJI_G(vars) = NULL;
+    }
+
+    if (NULL != HITSUJI_G(checks)) {
+        zval_ptr_dtor(&HITSUJI_G(checks));
+        HITSUJI_G(checks) = NULL;
+    }
+
+    UNREGISTER_INI_ENTRIES();
 
     return SUCCESS;
 }
@@ -214,16 +259,8 @@ PHP_MINFO_FUNCTION(hitSuji)
 #   include "classes/router.h"
 #endif
 
-#ifndef HAVE_HITSUJI_CLASS_REQUEST
-#   include "classes/request.h"
-#endif
-
 #ifndef HAVE_HITSUJI_CLASS_VIEW
 #   include "classes/view.h"
-#endif
-
-#ifndef HAVE_HITSUJI_CLASS_DELEGATE
-#   include "classes/delegate.h"
 #endif
 
 #endif      // #ifndef HAVE_PHP_HITSUJI

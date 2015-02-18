@@ -12,7 +12,6 @@
  * @author          Yujiro Takahashi <yujiro3@gmail.com>
  * @filesource
  */
-include dirname(__FILE__).'/../bootstrap.php';
 
 hitSuji::router(
 )->always(

@@ -30,14 +30,10 @@
 #ifndef HAVE_HITSUJI_CALLABLE_H
 #define HAVE_HITSUJI_CALLABLE_H
 
-zval *hitsuji_call_function_0_params(zval *callable, zval *retval_ptr);
-zval *hitsuji_call_function_1_params(zval *callable, zval *retval_ptr, zval *param);
-zval *hitsuji_call_function_2_params(zval *callable, zval *retval_ptr, zval *param1, zval *param2);
-zval *hitsuji_calls_function_1_params(HashTable *ht, zval *retval_ptr, zval *param);
-int hitsuji_call_function_args(zval *callable, zval *retval_ptr, zval *param);
-
-void hitsuji_call_user_function_0_params(const char *funcname, zval *retval_ptr);
-void hitsuji_call_user_function_1_params(const char *funcname, zval *retval_ptr, zval *param);
+zval *hitsuji_call_function_0_params(zval *callable, zval **retval_ptr_ptr);
+zval *hitsuji_call_function_1_params(zval *callable, zval **retval_ptr_ptr, zval *param);
+zval *hitsuji_call_function_2_params(zval *callable, zval **retval_ptr_ptr, zval *param1, zval *param2);
+zval *hitsuji_call_function_args(zval *callable, zval **retval_ptr_ptr, zval *param);
 
 void hitsuji_execute_scripts(const char *filename);
 

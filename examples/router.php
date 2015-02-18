@@ -17,9 +17,8 @@
 php -d extension=modules/hitsuji.so -f examples/router.php
 */
 
-include 'skel/bootstrap.php';
+ini_set('hitsuji.page_path', dirname(__FILE__).'/skel/app/pages/');
 
-$router = hitSuji::router();
 /**/
 hitSuji::router(
 )->always(
@@ -29,8 +28,8 @@ hitSuji::router(
   'usr/:id',
   'simple.php'
 )->run('get','usr/123');
-/** /
-\hitSuji::router(
+/**/
+hitSuji::router(
 )->always(
   function () {
     echo "default\n";
@@ -39,7 +38,7 @@ hitSuji::router(
   'get',
   'usr/:id',
   function ($id) {
-var_dump($id);
+    var_dump($id);
     echo "usr:{$id}\n";
   }
 )->run('get','usr/123');

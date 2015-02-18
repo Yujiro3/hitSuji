@@ -31,6 +31,7 @@
 #define HAVE_HITSUJI_UTILITY
 
 #include "php.h"
+#include "ext/standard/md5.h"
 #include "zend_interfaces.h"
 
 #ifndef HAVE_PHP_HITSUJI_H
@@ -42,80 +43,15 @@
 #endif
 
 /**
- * hitSuji\Bootstrapクラス変数:dirs
- *
- * @param  const char *key
- * @return char
- */
-char *getDir(const char *key)
-{
-    hitsuji_t *hitsuji;
-    zval *zdirs, **zdir;
- 
-    hitsuji = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
-    zdirs = zend_read_property(Z_OBJCE_P(hitsuji->bootstrap), hitsuji->bootstrap, ZEND_STRL("dirs"), 1 TSRMLS_CC);
-
-    if (zend_hash_find(Z_ARRVAL_P(zdirs), key, strlen(key) + 1, (void **)&zdir) == FAILURE
-        || IS_STRING != Z_TYPE_PP(zdir)) {
-        return NULL;
-    }
-    return Z_STRVAL_PP(zdir);
-}
-
-/**
- * hitSuji\Bootstrapクラス変数:patterns
- *
- * @param  const char *key
- * @return char
- */
-char *getPattern(const char *key)
-{
-    hitsuji_t *hitsuji;
-    zval *zdirs, **zpat;
-
-    hitsuji = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
-
-    zdirs = zend_read_property(Z_OBJCE_P(hitsuji->bootstrap), hitsuji->bootstrap, ZEND_STRL("patterns"), 1 TSRMLS_CC);
-
-    if (zend_hash_find(Z_ARRVAL_P(zdirs), key, strlen(key) + 1, (void **)&zpat) == FAILURE
-        || IS_STRING != Z_TYPE_PP(zpat)) {
-        return NULL;
-    }
-
-    return Z_STRVAL_PP(zpat);
-}
-
-/**
- * hitSuji\Bootstrapクラス関数:makeNonce
- *
- * @param  string $seed
- * @return string
- */
-zval *makeNonce(zval *retval_ptr, zval *seed)
-{
-    hitsuji_t *hitsuji = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
-
-    return zend_call_method_with_1_params(
-        (zval **)&hitsuji->bootstrap, 
-        Z_OBJCE_P(hitsuji->bootstrap), 
-        NULL, 
-        "nonce", 
-        (zval **)&retval_ptr, 
-        seed
-    );
-}
-
-/**
  * 入力値の取得
  *
  * @access public
- * @param zval   retval_p     取得した値
+ * @param zval   retval_ptr   取得した値
  * @param string key          添字
  * @param string tack         参照先テーブル
- * @param zval   *request_ptr リクエスト配列
  * @return int
  */
-int getRequestValue(zval *retval_p, const char *key, const char *track, zval *request_ptr)
+int getRequestValue(zval *retval_ptr, const char *key, const char *track)
 {
     zval **value;
     zval *array_ptr = NULL;
@@ -127,20 +63,21 @@ int getRequestValue(zval *retval_p, const char *key, const char *track, zval *re
     } else if (strncasecmp(track, "cookie", 6) == 0) {
         array_ptr = PG(http_globals)[TRACK_VARS_COOKIE];
     } else if (strncasecmp(track, "route", 5) == 0) {
-        hitsuji_t *hitsuji = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
-        array_ptr = zend_read_property(Z_OBJCE_P(hitsuji->router), hitsuji->router, ZEND_STRL("vars"), 1 TSRMLS_CC);
+        if (NULL == HITSUJI_G(routes)) {
+            return 0;
+        }
+        array_ptr = HITSUJI_G(routes);
         if (!zend_is_true(array_ptr) || IS_ARRAY != Z_TYPE_P(array_ptr)) {
             return 0;
         }
     } else if (strncasecmp(track, "server", 6) == 0) {
         array_ptr = PG(http_globals)[TRACK_VARS_SERVER];
     } else {
-        if (zend_hash_num_elements(Z_ARRVAL_P(request_ptr)) == 0) {
-            hitsuji_t *hitsuji = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
+        if (zend_hash_num_elements(Z_ARRVAL_P(HITSUJI_G(requests))) == 0) {
             zval *zvars;
 
             zend_hash_merge(
-                Z_ARRVAL_P(request_ptr), 
+                Z_ARRVAL_P(HITSUJI_G(requests)), 
                 Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_POST]), 
                 (copy_ctor_func_t)zval_add_ref, 
                 NULL, 
@@ -149,7 +86,7 @@ int getRequestValue(zval *retval_p, const char *key, const char *track, zval *re
             );
 
             zend_hash_merge(
-                Z_ARRVAL_P(request_ptr), 
+                Z_ARRVAL_P(HITSUJI_G(requests)), 
                 Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_GET]), 
                 (copy_ctor_func_t)zval_add_ref, 
                 NULL, 
@@ -158,7 +95,7 @@ int getRequestValue(zval *retval_p, const char *key, const char *track, zval *re
             );
 
             zend_hash_merge(
-                Z_ARRVAL_P(request_ptr), 
+                Z_ARRVAL_P(HITSUJI_G(requests)), 
                 Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_COOKIE]), 
                 (copy_ctor_func_t)zval_add_ref, 
                 NULL, 
@@ -166,11 +103,10 @@ int getRequestValue(zval *retval_p, const char *key, const char *track, zval *re
                 1
             );
 
-            zvars = zend_read_property(Z_OBJCE_P(hitsuji->router), hitsuji->router, ZEND_STRL("vars"), 1 TSRMLS_CC);
-            if (zend_is_true(zvars) && IS_ARRAY == Z_TYPE_P(zvars)) {
+            if (NULL != HITSUJI_G(routes) && zend_is_true(HITSUJI_G(routes)) && IS_ARRAY == Z_TYPE_P(HITSUJI_G(routes))) {
                 zend_hash_merge(
-                    Z_ARRVAL_P(request_ptr), 
-                    Z_ARRVAL_P(zvars), 
+                    Z_ARRVAL_P(HITSUJI_G(requests)), 
+                    Z_ARRVAL_P(HITSUJI_G(routes)), 
                     (copy_ctor_func_t)zval_add_ref, 
                     NULL, 
                     sizeof(zval *), 
@@ -178,7 +114,7 @@ int getRequestValue(zval *retval_p, const char *key, const char *track, zval *re
                 );
             }
         }
-        array_ptr = request_ptr;
+        array_ptr = HITSUJI_G(requests);
     }
 
     if (!zend_is_true(array_ptr) || IS_ARRAY != Z_TYPE_P(array_ptr)) {
@@ -189,8 +125,64 @@ int getRequestValue(zval *retval_p, const char *key, const char *track, zval *re
         return 0;
     }
 
-    ZVAL_ZVAL(retval_p, *value, 1, 0);
+    ZVAL_ZVAL(retval_ptr, *value, 1, 0);
     return 1;
+}
+
+/**
+ * NONCE値の取得
+ *
+ * @access public
+ * @param char *nonce      nonce値
+ * @param const char *seed 種
+ * @return char
+ */
+char *getNonce(const char *seed)
+{
+    char *nonce;
+    PHP_MD5_CTX context;
+    time_t now; 
+    long timer;
+    char plain[256];
+    char trimed[213];
+    char gseed[31];
+    char md5str[33];
+    unsigned char digest[16];
+
+    now = time(NULL);
+    timer = (long)(now / HITSUJI_G(lifetime));
+
+    /* Global SEEDのトリミング */
+    if (strlen(HITSUJI_G(seed)) >= 30) {
+        memcpy(gseed, HITSUJI_G(seed), 29);
+        gseed[30] = '\0';
+    } else {
+        strcpy(gseed, HITSUJI_G(seed));
+    }
+
+    /* SEEDのトリミング */
+    if (strlen(trimed) >= 212) {
+        memcpy(trimed, seed, 211);
+        trimed[212] = '\0';
+    } else {
+        strcpy(trimed, seed);
+    }
+
+    sprintf(plain, "%d:%s:%s", timer, gseed, trimed);
+    plain[256] = '\0';
+    md5str[0] = '\0';
+    PHP_MD5Init(&context);
+    PHP_MD5Update(&context, plain, strlen(plain));
+    PHP_MD5Final(digest, &context);
+    make_digest_ex(md5str, digest, 16);
+
+    /* substr($hashed, -14, 10); */
+    md5str[28] = '\0';
+
+    nonce = (char *)emalloc(11);
+    strcpy(nonce, &md5str[18]);
+
+    return nonce;
 }
 
 #endif      // #ifndef HAVE_HITSUJI_UTILITY

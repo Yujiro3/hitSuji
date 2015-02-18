@@ -100,13 +100,18 @@ zend_function_entry hitsuji_router_class_methods[] = {
     PHP_FE_END    /* Must be the last line in groonga_functions[] */
 };
 
-static void Router_destroy_route(hitsuji_route_t *route) { /* {{{ */
+/**
+ * 配列の削除規定
+ *
+ * @return object
+ */
+static void router_destroy_route(hitsuji_route_t *route)
+{
     zval_dtor(&route->method);
     zval_dtor(&route->uri);
     zval_dtor(&route->filename);
     zval_ptr_dtor(&route->callable);
-} /* }}} */
-
+}
 
 /**
  * HSJRouterクラス関数:コンストラクタ
@@ -117,7 +122,6 @@ PHP_METHOD(HSJRouter, __construct)
 {
     hitsuji_router_t *self;
     zval zkey, *zvars, *zdir;
-    char *dir;
 
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
@@ -125,12 +129,23 @@ PHP_METHOD(HSJRouter, __construct)
     self = (hitsuji_router_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
     /* テンプレートファイル保存ディレクトリの取得と設定 */
-    dir = getDir("page");
-    ZVAL_STRING(&self->dir, dir, 1);
+    ZVAL_STRING(&self->dir, HITSUJI_G(page_path), 1);
 
     /* hashテーブルの初期化 */
     ALLOC_HASHTABLE(self->routes);
-    zend_hash_init(self->routes, 0, NULL, (dtor_func_t) Router_destroy_route, 0);
+    zend_hash_init(self->routes, 0, NULL, (dtor_func_t) router_destroy_route, 0);
+
+    /* URL中の変数保存の初期化 */
+    if (NULL == HITSUJI_G(routes)) {
+        ALLOC_INIT_ZVAL(HITSUJI_G(routes));
+        array_init(HITSUJI_G(routes));
+    }
+    array_all_clean(HITSUJI_G(routes));
+
+    /* 取得URL変数の初期化 */
+    if (NULL == HITSUJI_G(page)) {
+        ALLOC_INIT_ZVAL(HITSUJI_G(page));
+    }
 }
 
 /**
@@ -147,6 +162,17 @@ PHP_METHOD(HSJRouter, __destruct)
         RETURN_FALSE;
     }
     self = (hitsuji_router_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
+
+    if (NULL != HITSUJI_G(page)) {
+        zval_ptr_dtor(&HITSUJI_G(page));
+        HITSUJI_G(page) = NULL;
+    }
+
+    if (NULL != HITSUJI_G(routes)) {
+        array_all_clean(HITSUJI_G(routes));
+        zval_ptr_dtor(&HITSUJI_G(routes));
+        HITSUJI_G(routes) = NULL;
+    }
 
     zval_dtor(&self->dir);
 
@@ -260,31 +286,22 @@ PHP_METHOD(HSJRouter, run)
                 }
 
                 if (NULL != pcre) {
-                    zval *zvars;
-
-                    ALLOC_INIT_ZVAL(zvars);
-                    array_init(zvars);
-
                     php_pcre_match_impl(
                         pcre,
                         (char *)uri, strlen(uri), 
-                        &zmatch, zvars, 
+                        &zmatch, HITSUJI_G(routes), 
                         0, 0, 0, 0 TSRMLS_CC
                     );
-                    array_trim_index(zvars);
+                    array_trim_index(HITSUJI_G(routes));
 
                     if (zend_is_true(&zmatch)) {
-                        zend_update_property_string(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("page"), Z_STRVAL(route->uri) TSRMLS_CC);
-                        zend_update_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("vars"), zvars TSRMLS_CC);
-
+                        ZVAL_STRING(HITSUJI_G(page), Z_STRVAL(route->uri), 1);
                         if (route->is_callable) {
-                            hitsuji_call_function_args(route->callable, NULL, zvars);
+                            hitsuji_call_function_args(route->callable, NULL, HITSUJI_G(routes));
                         } else {
                             /* extract() PHP関数の実行 */
                             hitsuji_execute_scripts(Z_STRVAL(route->filename));
                         }
-
-                        zval_ptr_dtor(&zvars);
 
                         RETURN_TRUE;
                     }

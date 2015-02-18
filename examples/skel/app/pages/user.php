@@ -13,15 +13,13 @@
  * @filesource
  */
 
-$template = \hitSuji::view();
+$template = hitSuji::view();
 $template->layout('layout.tpl');
 
-hitSuji::delegate(
-)->binds(
-    array(
-        'id' => array('number', 'route'),
-    )
-)->parse(
+hitSuji::delegate([
+    'bind' => [
+        'id' => ['number', 'route'],
+    ],
     /**
      * パース処理
      *
@@ -29,10 +27,9 @@ hitSuji::delegate(
      * @param array $data
      * @return array
      */
-    function ($data) {
+    'parse' => function ($data) {
         return array_map('intval', $data);
-    }
-)->action(
+    },
     /**
      * アクション処理
      *
@@ -40,27 +37,25 @@ hitSuji::delegate(
      * @param array $data
      * @return array
      */
-    function ($data) {
+    'action' => function ($data) {
         /* DB関連処理など */
-        // return array($data);
+        // return [$data];
 
         /* 出力の分岐を明確にする場合 */
-        return array(true, $data);
-    }
-)->always(
+        return [true, $data];
+    },
     /**
      * デフォルト処理
      *
      * @access public
      * @return void
      */
-    function ($values) use($template) {
+    'always' => function ($values) use($template) {
         $template->content('user/always.tpl');
         $template->assign('id', $values['id']);
         $template->assign('nonce', hitSuji::makeNonce('/user/:id'));
         $template->display();
-    }
-)->done(
+    },
     /**
      * 成功時処理
      *
@@ -71,18 +66,17 @@ hitSuji::delegate(
         $template->content('user/success.tpl');
         $template->assign('id', $values['id']);
         $template->display();
-    }
-)->fail(
+    },
     /**
      * 失敗時処理
      *
      * @access public
      * @return void
      */
-    function ($values, $checks) use($template) {
+    'done' => function ($values, $checks) use($template) {
         $template->content('user/fail.tpl');
         $template->assign('id', $values['id']);
         $template->assign('error', 'エラーです。');
         $template->display();
     }
-)->run();
+]);

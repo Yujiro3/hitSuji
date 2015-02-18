@@ -86,7 +86,6 @@ PHP_METHOD(HSJView, __construct)
 {
     hitsuji_view_t *self;
     zval *zvars;
-    char *dir;
 
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
@@ -94,8 +93,7 @@ PHP_METHOD(HSJView, __construct)
     self = (hitsuji_view_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
     /* テンプレートファイル保存ディレクトリの取得と設定 */
-    dir = getDir("tpl");
-    ZVAL_STRING(&self->dir, dir, 1);
+    ZVAL_STRING(&self->dir, HITSUJI_G(template_path), 1);
 
     /* レイアウトファイル */
     zend_update_property_string(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("layout"), "layout.tpl" TSRMLS_CC);

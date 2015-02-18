@@ -16,16 +16,15 @@
 $template = hitSuji::view();
 $template->layout('layout.tpl');
 
-hitSuji::delegate(
-)->always(
+hitSuji::delegate([
     /**
      * デフォルト処理
      *
      * @access public
      * @return void
      */
-    function ($values) use($template) {
+    'always' => function ($values) use($template) {
         $template->content('always.tpl');
         $template->display();
     }
-)->run();
+]);

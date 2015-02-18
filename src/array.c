@@ -45,7 +45,7 @@
  * 配列の数値をキーとする変数を消去
  *
  * @access public
- * @param zval *array
+ * @param  HashTable *array
  * @return void
  */
 void hash_trim_index(HashTable *array) 
@@ -90,7 +90,7 @@ void hash_trim_index(HashTable *array)
  * 配列の中身を全て消去
  *
  * @access public
- * @param zval *array
+ * @param  HashTable *array
  * @return void
  */
 void hash_all_clean(HashTable *array) 
@@ -108,7 +108,7 @@ void hash_all_clean(HashTable *array)
  * 配列の数値をキーとする変数を消去
  *
  * @access public
- * @param zval *array
+ * @param  zval *array
  * @return void
  */
 void array_trim_index(zval *array) 
@@ -123,7 +123,7 @@ void array_trim_index(zval *array)
  * 配列の中身を全て消去
  *
  * @access public
- * @param zval *array
+ * @param  zval *array
  * @return void
  */
 void array_all_clean(zval *array) 
@@ -138,28 +138,30 @@ void array_all_clean(zval *array)
  * 配列をbool値とデータに分離
  *
  * @access public
- * @param zval *array
+ * @param  int  *result
+ * @param  zval *array
  * @return int
  */
-int array_bool_data(zval *array) 
+zval *array_bool_data(int *result, zval *array) 
 {
     HashPosition position;
     zval **data, *tmp;
-    int result = 0;
     char *key = NULL;
     uint key_len = 0;
     ulong index;
 
+    *result = 0;
     if (!zend_is_true(array)) {
-        return result;
+        return array;
     }
 
     if (IS_ARRAY != Z_TYPE_P(array)) {
-        return 1;
+        *result = 1;
+        return array;
     }
 
     if (zend_hash_num_elements(Z_ARRVAL_P(array)) == 0) {
-        return result;
+        return array;
     }
 
     /* 先頭の配列をチェック */
@@ -167,10 +169,11 @@ int array_bool_data(zval *array)
     if (zend_hash_get_current_data_ex(Z_ARRVAL_P(array), (void **)&data, &position) == SUCCESS) {
         if (IS_BOOL == Z_TYPE_PP(data)) {
             if (zend_is_true(*data)) {
-                result = 1;
+                *result = 1;
             }
         } else {
-            return 1;
+            *result = 1;
+            return array;
         }
     }
 
@@ -178,7 +181,8 @@ int array_bool_data(zval *array)
     zend_hash_move_forward_ex(Z_ARRVAL_P(array), &position);
 
     if (zend_hash_get_current_data_ex(Z_ARRVAL_P(array), (void **)&data, &position) != SUCCESS) {
-        return result;
+        *result = 1;
+        return NULL;
     }
     ALLOC_INIT_ZVAL(tmp);
     ZVAL_ZVAL(tmp, *data, 1, 0);
@@ -186,7 +190,7 @@ int array_bool_data(zval *array)
     zval_ptr_dtor(&array);
     array = tmp;
 
-    return result;
+    return array;
 }
 
 #endif      // #ifndef HAVE_HITSUJI_ARRAY

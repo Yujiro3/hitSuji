@@ -46,5 +46,5 @@ if test "$PHP_HITSUJI" != "no"; then
   dnl
   dnl PHP_SUBST(HITSUJI_SHARED_LIBADD)
 
-  PHP_NEW_EXTENSION(hitsuji, php_hitsuji.c src/array.c src/callable.c src/object.c src/utility.c, $ext_shared)
+  PHP_NEW_EXTENSION(hitsuji, php_hitsuji.c src/array.c src/callable.c src/object.c src/utility.c src/validate.c, $ext_shared)
 fi

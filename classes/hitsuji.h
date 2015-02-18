@@ -35,27 +35,17 @@
  */
 typedef struct {
     zend_object std;
-    zval *bootstrap;
-    zval *router;
-    zval *delegate;
-    zval *request;
-    zval *view;
-    zval *request_ptr;
 } hitsuji_t;
 
 /**
  * クラスの宣言・登録部分
  */
-PHP_METHOD(hitSuji, __construct);
-PHP_METHOD(hitSuji, __destruct);
-PHP_METHOD(hitSuji, bootstrap);
+PHP_METHOD(hitSuji, nonce);
 PHP_METHOD(hitSuji, router);
-PHP_METHOD(hitSuji, delegate);
-PHP_METHOD(hitSuji, request);
 PHP_METHOD(hitSuji, view);
-PHP_METHOD(hitSuji, dir);
-PHP_METHOD(hitSuji, pattern);
-PHP_METHOD(hitSuji, makeNonce);
+PHP_METHOD(hitSuji, request);
+PHP_METHOD(hitSuji, delegate);
+PHP_METHOD(hitSuji, quick);
 
 
 ZEND_BEGIN_ARG_INFO_EX(hitSuji_0_param, 0, ZEND_RETURN_VALUE, 0)
@@ -75,148 +65,36 @@ extern zend_function_entry hitsuji_class_methods[];
  * クラスの実装部分
  */
 zend_function_entry hitsuji_class_methods[] = {
-    PHP_ME(hitSuji, __construct, hitSuji_0_param,  ZEND_ACC_PUBLIC | ZEND_ACC_CTOR)
-    PHP_ME(hitSuji, __destruct,  hitSuji_0_param,  ZEND_ACC_PUBLIC | ZEND_ACC_DTOR)
-    PHP_ME(hitSuji, bootstrap,   hitSuji_0_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    PHP_ME(hitSuji, nonce,       hitSuji_1_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     PHP_ME(hitSuji, router,      hitSuji_0_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-    PHP_ME(hitSuji, delegate,    hitSuji_0_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-    PHP_ME(hitSuji, request,     hitSuji_0_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     PHP_ME(hitSuji, view,        hitSuji_0_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-    PHP_ME(hitSuji, dir,         hitSuji_1_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-    PHP_ME(hitSuji, pattern,     hitSuji_1_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-    PHP_ME(hitSuji, makeNonce,   hitSuji_1_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    PHP_ME(hitSuji, request,     hitSuji_1_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    PHP_ME(hitSuji, delegate,    hitSuji_1_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    PHP_ME(hitSuji, quick,       hitSuji_1_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     PHP_FE_END    /* Must be the last line in groonga_functions[] */
 };
 
 /**
- * hitSujiクラス関数:コンストラクタ
+ * hitSujiクラス関数:nonce
  *
- * @return object
+ * @param  string $seed
+ * @return string
  */
-PHP_METHOD(hitSuji, __construct)
+PHP_METHOD(hitSuji, nonce)
 {
-    hitsuji_t *self;
-    zend_class_entry *ce = NULL;
+    char *nonce;
+    char *seed = NULL;
+    uint seed_len;
 
-    if (zend_parse_parameters_none() != SUCCESS) {
+    /* 引数の受け取り */
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &seed, &seed_len) == FAILURE) {
         RETURN_FALSE;
     }
+    nonce = getNonce(seed);
 
-    self = (hitsuji_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
-    /* コンフィグの初期化 */
-    zend_try {
-        zend_class_entry *ce = zend_fetch_class(ZEND_STRL("hitSuji\\Bootstrap"), ZEND_FETCH_CLASS_AUTO TSRMLS_CC);
-
-        ALLOC_INIT_ZVAL(self->bootstrap);
-        object_init_ex(self->bootstrap, ce);
-
-        zend_call_method_with_1_params(
-            (zval **)&self->bootstrap, 
-            ce, 
-            NULL, 
-            "__construct", 
-            NULL, 
-            self->bootstrap
-        );
-    }
-    zend_end_try();
-
-    /* ルーターの初期化 */
-    ALLOC_INIT_ZVAL(self->router);
-    object_init_ex(self->router, hitsuji_router_ce);
-    CALL_METHOD(HSJRouter, __construct, NULL, self->router);
-
-    /* リクエストの初期化 */
-    ALLOC_INIT_ZVAL(self->request);
-    object_init_ex(self->request, hitsuji_request_ce);
-    CALL_METHOD(HSJRequest, __construct, NULL, self->request);
-
-    /* ビューの初期化 */
-    ALLOC_INIT_ZVAL(self->view);
-    object_init_ex(self->view, hitsuji_view_ce);
-    CALL_METHOD(HSJView, __construct, NULL, self->view);
-
-    /* アプリケーションの初期化 */
-    ALLOC_INIT_ZVAL(self->delegate);
-    object_init_ex(self->delegate, hitsuji_delegate_ce);
-    CALL_METHOD(HSJDelegate, __construct, NULL, self->delegate);
-
-    /* リクエスト用 */
-    ALLOC_INIT_ZVAL(self->request_ptr);
-    array_init(self->request_ptr);
-}
-
-/**
- * hitSujiクラス関数:コンストラクタ
- *
- * @return object
- */
-PHP_METHOD(hitSuji, __destruct)
-{
-    hitsuji_t *self;
-
-    if (zend_parse_parameters_none() != SUCCESS) {
-        RETURN_FALSE;
-    }
-    self = (hitsuji_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
-
-    /* ビューオブジェクトの破棄 */
-    if (NULL != self->view) {
-        zval_ptr_dtor(&self->view);
-    }
-
-    /* リクエストオブジェクトの破棄 */
-    if (NULL != self->request) {
-        zval_ptr_dtor(&self->request);
-    }
-
-    /* コアプリケーションオブジェクトの破棄 */
-    if (NULL != self->delegate) {
-        zval_ptr_dtor(&self->delegate);
-    }
-
-    /* ルーターオブジェクトの破棄 */
-    if (NULL != self->router) {
-        zval_ptr_dtor(&self->router);
-    }
-
-    /* Bootstrapオブジェクトの破棄 */
-    if (NULL != self->bootstrap) {
-        zval_ptr_dtor(&self->bootstrap);
-    }
-
-    /* リクエスト配列の破棄 */
-    if (NULL != self->request_ptr) {
-        zval_ptr_dtor(&self->request_ptr);
-    }
-
-    if (NULL != hitsuji_object_ptr) {
-        zval_ptr_dtor(&hitsuji_object_ptr);
-    }
-}
-
-/**
- * hitSujiクラス関数:bootstrap
- *
- * @return object
- */
-PHP_METHOD(hitSuji, bootstrap)
-{
-    if (zend_parse_parameters_none() != SUCCESS) {
-        RETURN_FALSE;
-    }
-    /* ルーターの初期化 */
-    ALLOC_INIT_ZVAL(hitsuji_object_ptr);
-    object_init_ex(hitsuji_object_ptr, hitsuji_ce);
-
-    zend_call_method_with_0_params(
-        (zval **)&hitsuji_object_ptr, 
-        Z_OBJCE_P(hitsuji_object_ptr), 
-        NULL, 
-        "__construct", 
-        NULL
-    );
+    RETVAL_STRING(nonce, 1);
+    efree(nonce);
 }
 
 /**
@@ -226,51 +104,18 @@ PHP_METHOD(hitSuji, bootstrap)
  */
 PHP_METHOD(hitSuji, router)
 {
-    hitsuji_t *self;
+    zval *router;
 
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
     }
-    self = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
+
+    ALLOC_INIT_ZVAL(router);
+    object_init_ex(router, hitsuji_router_ce);
+    CALL_METHOD(HSJRouter, __construct, NULL, router);
 
     /* 返り値へオブジェクトを渡す */
-    RETURN_ZVAL(self->router, 0, 0);
-}
-
-/**
- * hitSujiクラス関数:delegate
- *
- * @return object
- */
-PHP_METHOD(hitSuji, delegate)
-{
-    hitsuji_t *self;
-
-    if (zend_parse_parameters_none() != SUCCESS) {
-        RETURN_FALSE;
-    }
-    self = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
-
-    /* 返り値へオブジェクトを渡す */
-    RETURN_ZVAL(self->delegate, 1, 0);
-}
-
-/**
- * hitSujiクラス関数:request
- *
- * @return object
- */
-PHP_METHOD(hitSuji, request)
-{
-    hitsuji_t *self;
-
-    if (zend_parse_parameters_none() != SUCCESS) {
-        RETURN_FALSE;
-    }
-    self = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
-
-    /* 返り値へオブジェクトを渡す */
-    RETURN_ZVAL(self->request, 0, 0);
+    RETURN_ZVAL(router, 1, 1);
 }
 
 /**
@@ -280,78 +125,368 @@ PHP_METHOD(hitSuji, request)
  */
 PHP_METHOD(hitSuji, view)
 {
-    hitsuji_t *self;
+    zval *view;
 
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
     }
-    self = (hitsuji_t *) zend_object_store_get_object(hitsuji_object_ptr TSRMLS_CC);
+
+    /* ビューの初期化 */
+    ALLOC_INIT_ZVAL(view);
+    object_init_ex(view, hitsuji_view_ce);
+    CALL_METHOD(HSJView, __construct, NULL, view);
 
     /* 返り値へオブジェクトを渡す */
-    RETURN_ZVAL(self->view, 0, 0);
+    RETURN_ZVAL(view, 1, 1);
 }
 
 /**
- * hitSujiクラス関数:dir
+ * hitSujiクラス関数:request
  *
- * @param  string $key
- * @return string
+ * Example:
+ * <code>
+ * hitSuji::request([
+ *     'id'   => number,
+ *     'name' => ['string', 'require'],
+ *     'email'=> ['email', 'request'],
+ * ]);
+ * </code>
+ *
+ * @return object
  */
-PHP_METHOD(hitSuji, dir)
+PHP_METHOD(hitSuji, request)
 {
-    char *key = NULL, *dir;
-    uint key_len;
+    zval *options = NULL;
+    int  valid = 0;
 
     /* 引数の受け取り */
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len) == FAILURE) {
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &options) == FAILURE) {
         RETURN_FALSE;
     }
-    dir = getDir(key);
 
-    RETURN_STRING(dir, 1);
+    if (HITSUJI_G(vars) == NULL) {
+        ALLOC_INIT_ZVAL(HITSUJI_G(vars));
+        array_init(HITSUJI_G(vars));
+    }
+
+    if (NULL == HITSUJI_G(checks)) {
+        ALLOC_INIT_ZVAL(HITSUJI_G(checks));
+        array_init(HITSUJI_G(checks));
+    }
+
+    valid = hitsuji_verifies(options);
+
+    array_all_clean(HITSUJI_G(vars));
+    array_all_clean(HITSUJI_G(checks));
+
+    if (NULL != HITSUJI_G(checks)) {
+        zval_ptr_dtor(&HITSUJI_G(checks));
+        HITSUJI_G(checks) = NULL;
+    }
+
+    RETVAL_ZVAL(HITSUJI_G(vars), 1, 1);
 }
 
 /**
- * hitSujiクラス関数:pattern
+ * hitSujiクラス関数:delegate
  *
- * @param  string $key
- * @return string
+ * Example:
+ * <code>
+ * hitSuji::delegate([
+ *     'data' => [
+ *         'id' => $_GET['id'],
+ *         'sid'=> $_GET['sid']
+ *     ],
+ *     'bind' => [
+ *         'id'   => 'number',
+ *         'name' => array('string', 'require'),
+ *         'email'=> array('email', 'request'),
+ *     ],
+ *     'parse'=> function ($data) {
+ *         return $data;
+ *     },
+ *     'action'=> function ($data) {
+ *         return [true, $data];
+ *     },
+ *     'always' => function ($data) {
+ *         echo 'always!';
+ *     },
+ *     'done' => function ($data) {
+ *         echo 'done!';
+ *     },
+ *     'fail' => function ($data) {
+ *         echo 'fail!';
+ *     }
+ * ]);
+ * </code>
+ *
+ * @return object
  */
-PHP_METHOD(hitSuji, pattern)
+PHP_METHOD(hitSuji, delegate)
 {
-    char *key = NULL, *pattern;
-    uint key_len;
+    zval *property = NULL;
+    zval *data = NULL;
+    zval *parse = NULL, *action = NULL;
+    zval *always = NULL, *done = NULL, *fail = NULL;
+    zval *retval = NULL;
+    int  valid = 0, nvalid = 0;
 
     /* 引数の受け取り */
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len) == FAILURE) {
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &property) == FAILURE) {
         RETURN_FALSE;
     }
-    pattern = getPattern(key);
 
-    RETURN_STRING(pattern, 1);
-}
-
-/**
- * hitSujiクラス関数:makeNonce
- *
- * @param  string $seed
- * @return string
- */
-PHP_METHOD(hitSuji, makeNonce)
-{
-    hitsuji_t *self;
-    zval *seed, retval, *retval_ptr;
-
-    /* 引数の受け取り */
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &seed) == FAILURE &&
-        IS_STRING != Z_TYPE_P(seed)) 
+    /* プロパティを変数へ */
     {
+        HashPosition pos;
+        zval **row;
+
+        for (zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(property), &pos);
+             zend_hash_get_current_data_ex(Z_ARRVAL_P(property), (void **)&row, &pos) == SUCCESS;
+             zend_hash_move_forward_ex(Z_ARRVAL_P(property), &pos)
+        ) {
+            char *key = NULL;
+            uint key_len = 0;
+            ulong index;
+
+            zend_hash_get_current_key_ex(Z_ARRVAL_P(property), &key, &key_len, &index, 0, &pos);
+            if (strncasecmp(key, "data", 4) == 0) {
+                if (zend_is_true(*row)) {
+                    data = *row;
+                }
+            } else if (strncasecmp(key, "bind", 4) == 0) {
+                if (zend_is_true(*row) && IS_ARRAY == Z_TYPE_PP(row)) {
+                    if (NULL == HITSUJI_G(vars)) {
+                        ALLOC_INIT_ZVAL(HITSUJI_G(vars));
+                        array_init(HITSUJI_G(vars));
+                    }
+
+                    if (NULL == HITSUJI_G(checks)) {
+                        ALLOC_INIT_ZVAL(HITSUJI_G(checks));
+                        array_init(HITSUJI_G(checks));
+                    }
+                    valid = hitsuji_verifies(*row);
+                }
+            } else {
+                if (zend_is_callable(*row, 0, NULL TSRMLS_CC)) {
+                    if (strncasecmp(key, "parse", 5) == 0) {
+                        parse = *row;
+                    } else if (strncasecmp(key, "action", 6) == 0) {
+                        action = *row;
+                    } else if (strncasecmp(key, "always", 6) == 0) {
+                        always = *row;
+                    } else if (strncasecmp(key, "done", 4) == 0) {
+                        done = *row;
+                    } else if (strncasecmp(key, "fail", 4) == 0) {
+                        fail = *row;
+                    }
+                } // if (zend_is_callable( *row, 0, NULL TSRMLS_CC)) 
+            } // if (strncasecmp(key, "vars", 4)) 
+        }
+    }
+
+    /* データの準備 */
+    if (NULL == data && NULL == HITSUJI_G(vars)) {
+        ALLOC_INIT_ZVAL(data);
+        array_init(data);
+    } else if (NULL != data && NULL != HITSUJI_G(vars)) {
+        zend_hash_merge(
+            Z_ARRVAL_P(data), 
+            Z_ARRVAL_P(HITSUJI_G(vars)), 
+            (copy_ctor_func_t)zval_add_ref, 
+            NULL, 
+            sizeof(zval *), 
+            1
+        );
+    } else {
+        data = HITSUJI_G(vars);
+    }
+
+    /* データの解析処理 */
+    if (NULL != parse && zend_is_callable(parse, 0, NULL TSRMLS_CC)) {
+        hitsuji_call_function_1_params(parse, (zval **)&retval, data);
+        zval_ptr_dtor(&data);
+        data = retval;
+    }
+
+    /* Nonce値の判定 */
+    if (NULL != HITSUJI_G(page)) {
+        nvalid = hitsuji_nonce_verify(Z_ARRVAL_P(HITSUJI_G(page)));
+    }
+
+    if (valid && nvalid) {
+        int result;
+
+        /* アクション処理の実行 */
+        if (NULL != action && zend_is_callable(action, 0, NULL TSRMLS_CC)) {
+            hitsuji_call_function_1_params(action, (zval **)&retval, data);
+            zval_ptr_dtor(&data);
+            data = retval;
+        }
+
+        data = array_bool_data(&result, data);
+        if (result) {
+            /* 成功時処理の実行 */
+            if (NULL != done && zend_is_callable(done, 0, NULL TSRMLS_CC)) {
+                hitsuji_call_function_1_params(done, (zval **)&retval, data);
+                zval_ptr_dtor(&data);
+                data = retval;
+            }
+        } else {
+            /* 失敗時処理の実行 */
+            if (NULL != fail && zend_is_callable(fail, 0, NULL TSRMLS_CC)) {
+                hitsuji_call_function_1_params(fail, (zval **)&retval, data);
+                zval_ptr_dtor(&data);
+                data = retval;
+            }
+        }
+    } else {
+        if (nvalid) {
+            /* 失敗時処理の実行 */
+            if (NULL != fail && zend_is_callable(fail, 0, NULL TSRMLS_CC)) {
+                hitsuji_call_function_1_params(fail, (zval **)&retval, data);
+                zval_ptr_dtor(&data);
+                data = retval;
+            }
+        } else {
+            /* デフォルト処理の実行 */
+            if (NULL != always && zend_is_callable(always, 0, NULL TSRMLS_CC)) {
+                hitsuji_call_function_1_params(always, (zval **)&retval, data);
+                zval_ptr_dtor(&data);
+                data = retval;
+            }
+        }
+    }
+    RETVAL_ZVAL(data, 1, 1);
+
+    /* グローバル変数のクリア */
+    array_all_clean(HITSUJI_G(vars));
+    array_all_clean(HITSUJI_G(checks));
+
+    if (NULL != HITSUJI_G(checks)) {
+        zval_ptr_dtor(&HITSUJI_G(checks));
+        HITSUJI_G(checks) = NULL;
+    }
+
+    if (NULL != HITSUJI_G(vars)) {
+        zval_ptr_dtor(&HITSUJI_G(vars));
+        HITSUJI_G(vars) = NULL;
+    }
+}
+
+/**
+ * hitSujiクラス関数:quick
+ *
+ * Example:
+ * <code>
+ * hitSuji::action([
+ *     'data' => [
+ *         'id' => $_GET['id'],
+ *         'sid'=> $_GET['sid']
+ *     ],
+ *     'parse'=> function ($data) {
+ *         return $data;
+ *     },
+ *     'action'=> function ($data) {
+ *         return [true, $data];
+ *     },
+ *     'done' => function ($data) {
+ *         echo 'done!';
+ *     },
+ *     'fail' => function ($data) {
+ *         echo 'fail!';
+ *     }
+ * ]);
+ * </code>
+ *
+ * @param  array  $property
+ * @return string
+ */
+PHP_METHOD(hitSuji, quick)
+{
+    zval *property = NULL, *data = NULL, *parse = NULL;
+    zval *action = NULL, *done = NULL, *fail = NULL;
+    zval *retval = NULL;
+    int  result;
+
+    /* 引数の受け取り */
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &property) == FAILURE) {
         RETURN_FALSE;
     }
-    retval_ptr = makeNonce(&retval, seed);
 
-    RETVAL_STRINGL(Z_STRVAL_P(retval_ptr), Z_STRLEN_P(retval_ptr), 1);
-    zval_ptr_dtor(&retval_ptr);
+    /* プロパティを変数へ */
+    {
+        HashPosition pos;
+        zval **row;
+
+        for (zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(property), &pos);
+             zend_hash_get_current_data_ex(Z_ARRVAL_P(property), (void **)&row, &pos) == SUCCESS;
+             zend_hash_move_forward_ex(Z_ARRVAL_P(property), &pos)
+        ) {
+            char *key = NULL;
+            uint key_len = 0;
+            ulong index;
+
+            zend_hash_get_current_key_ex(Z_ARRVAL_P(property), &key, &key_len, &index, 0, &pos);
+
+            if (strncasecmp(key, "data", 4) == 0) {
+                if (zend_is_true(*row)) {
+                    data = *row;
+                }
+            } else {
+                if (zend_is_callable(*row, 0, NULL TSRMLS_CC)) {
+                    if (strncasecmp(key, "parse", 5) == 0) {
+                        parse = *row;
+                    } else if (strncasecmp(key, "action", 6) == 0) {
+                        action = *row;
+                    } else if (strncasecmp(key, "done", 4) == 0) {
+                        done = *row;
+                    } else if (strncasecmp(key, "fail", 4) == 0) {
+                        fail = *row;
+                    }
+                } // if (zend_is_callable(*row, 0, NULL TSRMLS_CC)) 
+            } // if (strncasecmp(key, "data", 4)) 
+        }
+    }
+
+    /* データの準備 */
+    if (NULL == data) {
+        ALLOC_INIT_ZVAL(data);
+        array_init(data);
+    }
+
+    /* データの解析処理 */
+    if (NULL != parse && zend_is_callable(parse, 0, NULL TSRMLS_CC)) {
+        hitsuji_call_function_1_params(parse, (zval **)&retval, data);
+        zval_ptr_dtor(&data);
+        data = retval;
+    }
+
+    /* アクション処理の実行 */
+    if (NULL != action && zend_is_callable(action, 0, NULL TSRMLS_CC)) {
+        hitsuji_call_function_1_params(action, (zval **)&retval, data);
+        zval_ptr_dtor(&data);
+        data = retval;
+    }
+
+    data = array_bool_data(&result, data);
+    if (result) {
+        /* 失敗時処理の実行 */
+        if (NULL != done && zend_is_callable(done, 0, NULL TSRMLS_CC)) {
+            hitsuji_call_function_1_params(done, (zval **)&retval, data);
+            zval_ptr_dtor(&data);
+            data = retval;
+        }
+    } else {
+        /* 失敗時処理の実行 */
+        if (NULL != fail && zend_is_callable(fail, 0, NULL TSRMLS_CC)) {
+            hitsuji_call_function_1_params(fail, (zval **)&retval, data);
+            zval_ptr_dtor(&data);
+            data = retval;
+        }
+    }
+
+    RETVAL_ZVAL(data, 1, 1);
 }
 
 #   endif       /* #ifndef HAVE_HITSUJI_CLASS_HITSUJI */
