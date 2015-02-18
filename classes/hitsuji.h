@@ -140,14 +140,23 @@ PHP_METHOD(hitSuji, router)
     zval *routes = NULL;
     zval *always = NULL;
     char *url = NULL, *method = NULL;
+    int  matched = 0;
 
     /* 引数の受け取り */
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &routes) == FAILURE) {
         RETURN_FALSE;
     }
-
     url    = routerGetURL();
     method = routerGetMethod();
+
+    if (HITSUJI_G(routes) == NULL) {
+        ALLOC_INIT_ZVAL(HITSUJI_G(routes));
+        array_init(HITSUJI_G(routes));
+    }
+
+    if (NULL == HITSUJI_G(page)) {
+        ALLOC_INIT_ZVAL(HITSUJI_G(page));
+    }
 
     /* プロパティを変数へ */
     {
@@ -169,6 +178,7 @@ PHP_METHOD(hitSuji, router)
                 if (routerIsMethod(method, *row) && routerIsRoute(url, route)) {
                     ZVAL_STRING(HITSUJI_G(page), route, 1);
                     if (routerFireAction(*row)) {
+                        matched = 1;
                         break;
                     }
                 }
@@ -178,13 +188,27 @@ PHP_METHOD(hitSuji, router)
         } // for
     }
 
-    if (zend_is_callable(always, 0, NULL TSRMLS_CC)) {
-        hitsuji_call_function_0_params(always, NULL);
-    } else if (IS_STRING == Z_TYPE_P(always)) {
-        char *filename = getFilename(HITSUJI_G(page_path), Z_STRVAL_P(always));
-        hitsuji_execute_scripts(filename);
-        efree(filename);
+    if (!matched) {
+        if (zend_is_callable(always, 0, NULL TSRMLS_CC)) {
+            hitsuji_call_function_0_params(always, NULL);
+        } else if (IS_STRING == Z_TYPE_P(always)) {
+            char *filename = getFilename(HITSUJI_G(page_path), Z_STRVAL_P(always));
+            hitsuji_execute_scripts(filename);
+            efree(filename);
+        }
     }
+
+    /* メモリの開放 */
+    if (NULL != HITSUJI_G(page)) {
+        zval_ptr_dtor(&HITSUJI_G(page));
+        HITSUJI_G(page) = NULL;
+    }
+
+    if (NULL != HITSUJI_G(routes)) {
+        zval_ptr_dtor(&HITSUJI_G(routes));
+        HITSUJI_G(routes) = NULL;
+    }
+
     if (NULL != method) {
         efree(method);
     }

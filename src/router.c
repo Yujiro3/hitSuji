@@ -215,7 +215,7 @@ char *router_get_filename(char *name)
     char *filename;
     char *dir;
 
-    dir = (char *)HITSUJI_G(routes);
+    dir = (char *)HITSUJI_G(page_path);
     filename = (char *)emalloc((strlen(dir) + strlen(name) + 1));
 
     /* ディレクトリパスの追加 */
