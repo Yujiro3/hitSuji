@@ -164,7 +164,7 @@ PHP_METHOD(hitSuji, router)
 
             zend_hash_get_current_key_ex(Z_ARRVAL_P(routes), &route, &route_len, &index, 0, &pos);
 
-            if (strlen(route) && NULL != method) {
+            if (NULL != url && strlen(route)) {
                 /* methodとルートのマッチ */
                 if (routerIsMethod(method, *row) && routerIsRoute(url, route)) {
                     ZVAL_STRING(HITSUJI_G(page), route, 1);

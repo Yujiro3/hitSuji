@@ -87,6 +87,10 @@ char *routerGetURL(void)
         return NULL;
     } // if (SG(request_info).request_method)
 
+    if (0 >= uri_len) {
+        return NULL;
+    }
+
     result = (char *)emalloc(uri_len);
     strcpy(result, uri);
 

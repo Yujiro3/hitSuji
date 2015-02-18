@@ -186,7 +186,6 @@ char *getNonce(const char *seed)
     return nonce;
 }
 
-
 /**
  * ファイル名の取得
  *

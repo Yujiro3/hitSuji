@@ -19,10 +19,10 @@ php -d extension=modules/hitsuji.so -f examples/view.php
 
 ini_set('hitsuji.template_path', dirname(__FILE__).'/skel/app/templates/');
 
-$view = hitSuji::view();
+$template = hitSuji::template();
 
-$view->layout('layout.tpl');
-$view->content('always.tpl');
-$view->assigns(array('search'=>'yahoo'));
-$view->assign('id', '123');
-$view->display();
+$template->layout('layout.tpl');
+$template->content('always.tpl');
+$template->assigns(array('search'=>'yahoo'));
+$template->assign('id', '123');
+$template->display();
