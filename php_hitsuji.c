@@ -61,6 +61,10 @@
 #   include "src/utility.h"
 #endif
 
+#ifndef HAVE_HITSUJI_ROUTER_H
+#   include "src/router.h"
+#endif
+
 #ifndef HAVE_HITSUJI_VALIDATE_H
 #   include "src/validate.h"
 #endif
@@ -77,7 +81,6 @@ static int le_hitsuji;
 
 /* ƒNƒ‰ƒX\‘¢‘Ì */
 zend_class_entry *hitsuji_ce = NULL;
-zend_class_entry *hitsuji_router_ce = NULL;
 zend_class_entry *hitsuji_view_ce = NULL;
 zend_class_entry *hitsuji_exception_ce = NULL;
 
@@ -153,13 +156,6 @@ PHP_MINIT_FUNCTION(hitSuji)
     hitsuji_ce = zend_register_internal_class(&ce TSRMLS_CC);
     hitsuji_ce->create_object = hitsuji_ctor;
     zend_declare_property_null(hitsuji_ce, ZEND_STRL("bootstrap"), ZEND_ACC_PUBLIC TSRMLS_CC);
-
-    /* routerƒNƒ‰ƒX‚Ì“o˜^ */
-    INIT_CLASS_ENTRY(ce, "hitSuji\\Router", hitsuji_router_class_methods);
-    hitsuji_router_ce = zend_register_internal_class(&ce TSRMLS_CC);
-    hitsuji_router_ce->create_object = hitsuji_router_ctor;
-    zend_declare_property_string(hitsuji_router_ce, ZEND_STRL("page"), "", ZEND_ACC_PUBLIC TSRMLS_CC);
-    zend_declare_property_null(hitsuji_router_ce,   ZEND_STRL("vars"),     ZEND_ACC_PUBLIC TSRMLS_CC);
 
     /* viewƒNƒ‰ƒX‚Ì“o˜^ */
     INIT_CLASS_ENTRY(ce, "hitSuji\\View", hitsuji_view_class_methods);
@@ -253,10 +249,6 @@ PHP_MINFO_FUNCTION(hitSuji)
 
 #ifndef HAVE_HITSUJI_CLASS_HITSUJI
 #   include "classes/hitsuji.h"
-#endif
-
-#ifndef HAVE_HITSUJI_CLASS_ROUTER
-#   include "classes/router.h"
 #endif
 
 #ifndef HAVE_HITSUJI_CLASS_VIEW

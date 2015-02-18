@@ -41,8 +41,8 @@ typedef struct {
  * クラスの宣言・登録部分
  */
 PHP_METHOD(hitSuji, nonce);
+PHP_METHOD(hitSuji, template);
 PHP_METHOD(hitSuji, router);
-PHP_METHOD(hitSuji, view);
 PHP_METHOD(hitSuji, request);
 PHP_METHOD(hitSuji, delegate);
 PHP_METHOD(hitSuji, quick);
@@ -66,8 +66,8 @@ extern zend_function_entry hitsuji_class_methods[];
  */
 zend_function_entry hitsuji_class_methods[] = {
     PHP_ME(hitSuji, nonce,       hitSuji_1_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-    PHP_ME(hitSuji, router,      hitSuji_0_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-    PHP_ME(hitSuji, view,        hitSuji_0_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    PHP_ME(hitSuji, template,    hitSuji_0_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    PHP_ME(hitSuji, router,      hitSuji_1_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     PHP_ME(hitSuji, request,     hitSuji_1_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     PHP_ME(hitSuji, delegate,    hitSuji_1_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     PHP_ME(hitSuji, quick,       hitSuji_1_param,  ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -98,32 +98,11 @@ PHP_METHOD(hitSuji, nonce)
 }
 
 /**
- * hitSujiクラス関数:router
+ * hitSujiクラス関数:template
  *
  * @return object
  */
-PHP_METHOD(hitSuji, router)
-{
-    zval *router;
-
-    if (zend_parse_parameters_none() != SUCCESS) {
-        RETURN_FALSE;
-    }
-
-    ALLOC_INIT_ZVAL(router);
-    object_init_ex(router, hitsuji_router_ce);
-    CALL_METHOD(HSJRouter, __construct, NULL, router);
-
-    /* 返り値へオブジェクトを渡す */
-    RETURN_ZVAL(router, 1, 1);
-}
-
-/**
- * hitSujiクラス関数:view
- *
- * @return object
- */
-PHP_METHOD(hitSuji, view)
+PHP_METHOD(hitSuji, template)
 {
     zval *view;
 
@@ -138,6 +117,80 @@ PHP_METHOD(hitSuji, view)
 
     /* 返り値へオブジェクトを渡す */
     RETURN_ZVAL(view, 1, 1);
+}
+
+/**
+ * hitSujiクラス関数:router
+ *
+ * Example:
+ * <code>
+ * hitSuji::router([
+ *     ''        => 'simple.php',
+ *     'usr/:id' => [
+ *         function ($id) {
+ *             echo "usr:{$id}\n";
+ *         }, 'get'
+ *     ]
+ * ]);
+ * </code>
+ * @return object
+ */
+PHP_METHOD(hitSuji, router)
+{
+    zval *routes = NULL;
+    zval *always = NULL;
+    char *url = NULL, *method = NULL;
+
+    /* 引数の受け取り */
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &routes) == FAILURE) {
+        RETURN_FALSE;
+    }
+
+    url    = routerGetURL();
+    method = routerGetMethod();
+
+    /* プロパティを変数へ */
+    {
+        HashPosition pos;
+        zval **row;
+
+        for (zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(routes), &pos);
+             zend_hash_get_current_data_ex(Z_ARRVAL_P(routes), (void **)&row, &pos) == SUCCESS;
+             zend_hash_move_forward_ex(Z_ARRVAL_P(routes), &pos)
+        ) {
+            char *route = NULL;
+            uint route_len = 0;
+            ulong index;
+
+            zend_hash_get_current_key_ex(Z_ARRVAL_P(routes), &route, &route_len, &index, 0, &pos);
+
+            if (strlen(route) && NULL != method) {
+                /* methodとルートのマッチ */
+                if (routerIsMethod(method, *row) && routerIsRoute(url, route)) {
+                    ZVAL_STRING(HITSUJI_G(page), route, 1);
+                    if (routerFireAction(*row)) {
+                        break;
+                    }
+                }
+            } else if (0 == strlen(route)) {
+                always = *row;
+            }
+        } // for
+    }
+
+    if (zend_is_callable(always, 0, NULL TSRMLS_CC)) {
+        hitsuji_call_function_0_params(always, NULL);
+    } else if (IS_STRING == Z_TYPE_P(always)) {
+        char *filename = getFilename(HITSUJI_G(page_path), Z_STRVAL_P(always));
+        hitsuji_execute_scripts(filename);
+        efree(filename);
+    }
+    if (NULL != method) {
+        efree(method);
+    }
+    if (NULL != url) {
+        efree(url);
+    }
 }
 
 /**
@@ -176,6 +229,8 @@ PHP_METHOD(hitSuji, request)
 
     valid = hitsuji_verifies(options);
 
+    RETVAL_ZVAL(HITSUJI_G(vars), 1, 1);
+
     array_all_clean(HITSUJI_G(vars));
     array_all_clean(HITSUJI_G(checks));
 
@@ -183,8 +238,6 @@ PHP_METHOD(hitSuji, request)
         zval_ptr_dtor(&HITSUJI_G(checks));
         HITSUJI_G(checks) = NULL;
     }
-
-    RETVAL_ZVAL(HITSUJI_G(vars), 1, 1);
 }
 
 /**

@@ -13,14 +13,10 @@
  * @filesource
  */
 
-hitSuji::router(
-)->always(
-  'always.php'
-)->on(
-  'get', 
-  '/user/:id', 
-  'user.php'
-)->run();
+hitSuji::router([
+  ''          => 'always.php',
+  '/user/:id' => ['get', 'user.php']
+]);
 
 /**
  * メモリ使用量用

@@ -82,51 +82,6 @@ zend_object_value hitsuji_ctor(zend_class_entry *ce TSRMLS_DC)
 }
 
 /**
- * routerクラスのデストラクタ (メモリ解放)
- *
- * @param hitsuji_router_t *self 開放する構造体
- * @return void
- */
-static void hitsuji_router_dtor(hitsuji_router_t *self TSRMLS_DC)
-{
-    /* カラムリストの開放 */
-    zend_object_std_dtor(&self->std TSRMLS_CC);
-    efree(self);
-}
-
-/**
- * routerクラスのコンストラクタ (メモリ確保)
- *
- * @param zend_class_entry *ce クラスエントリ
- * @return zend_object_value
- */
-zend_object_value hitsuji_router_ctor(zend_class_entry *ce TSRMLS_DC)
-{
-    zend_object_value retval;
-    hitsuji_router_t *self;
-
-    self = ecalloc(1, sizeof(*self));
-
-    zend_object_std_init(&self->std, ce TSRMLS_CC);
-    object_properties_init(&self->std, ce);
-    rebuild_object_properties(&self->std);
-
-    self->routes      = NULL;
-    self->callable    = NULL;
-    self->is_callable = 0;
-
-    retval.handle = zend_objects_store_put(
-        self, 
-        (zend_objects_store_dtor_t)zend_objects_destroy_object, 
-        (zend_objects_free_object_storage_t)hitsuji_router_dtor, 
-        NULL TSRMLS_CC
-    );
-    retval.handlers = zend_get_std_object_handlers();
-
-    return retval;
-}
-
-/**
  * viewクラスのデストラクタ (メモリ解放)
  *
  * @param hitsuji_view_t *self 開放する構造体

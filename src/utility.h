@@ -34,5 +34,6 @@ extern ZEND_DECLARE_MODULE_GLOBALS(hitsuji);
 
 int getRequestValue(zval *retval_p, const char *key, const char *track);
 char *getNonce(const char *seed);
+char *getFilename(char *dir, char *name);
 
 #endif  // #ifndef HAVE_HITSUJI_UTILITY_H

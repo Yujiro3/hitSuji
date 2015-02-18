@@ -24,10 +24,10 @@ Web framework delivered as a C-extension for PHP
 
 ```php
 <?php
-include dirname(__FILE__).'/bootstrap.php';
+ini_set('hitsuji.page_path', dirname(__FILE__).'/../app/pages/');
 
-hitSuji::router(
-)->always(function () {
+hitSuji::router([
+    '' => function () {
     echo <<< HTML
 <html>
 <head>
@@ -38,7 +38,8 @@ hitSuji::router(
 </body>
 </html>
 HTML;
-})->on('get', '/user/:id', function ($id) {
+    },
+    '/user/:id' => [function ($id) {
     echo <<< HTML
 <html>
 <head>
@@ -49,15 +50,18 @@ HTML;
 </body>
 </html>
 HTML;
-})->on('post', '/search', 'search.php'
-)->run();
+    }, 'get'],
+    '/search' => ['post', 'search.php']
+]);
 
 ```
 
 ### デリゲート ###
 
 ```php
-$template = hitSuji::view();
+ini_set('hitsuji.template_path', dirname(__FILE__).'/../app/templates/');
+
+$template = hitSuji::template();
 $template->layout('layout.tpl');
 
 hitSuji::delegate([

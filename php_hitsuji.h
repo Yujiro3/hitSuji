@@ -45,7 +45,6 @@
 #endif
 
 extern zend_class_entry *hitsuji_ce;
-extern zend_class_entry *hitsuji_router_ce;
 extern zend_class_entry *hitsuji_view_ce;
 extern zend_class_entry *hitsuji_exception_ce;
 /*
@@ -141,10 +140,6 @@ ZEND_END_MODULE_GLOBALS(hitsuji)
 
 #ifndef HAVE_HITSUJI_CLASS_HITSUJI_H
 #   include "classes/hitsuji.h"
-#endif
-
-#ifndef HAVE_HITSUJI_CLASS_ROUTER_H
-#   include "classes/router.h"
 #endif
 
 #ifndef HAVE_HITSUJI_CLASS_VIEW_H

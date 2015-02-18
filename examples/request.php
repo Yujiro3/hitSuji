@@ -18,8 +18,8 @@ php -d extension=modules/hitsuji.so -f examples/request.php
 */
 
 $request = hitSuji::request([
-    'PWD'=>  array('string', 'server', 'require', '/[^\/]/'),
-    'MAIL'=>  array('string', 'server', 'require', '/[^\/]/')
+    'PWD' => ['string', 'server', 'require'],
+    'MAIL'=> ['string', 'server']
 ]);
 
 var_dump($request);

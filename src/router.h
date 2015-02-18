@@ -27,10 +27,16 @@
  * @filesource
  */
 
-#ifndef HAVE_HITSUJI_OBJECT_H
-#define HAVE_HITSUJI_OBJECT_H
+#ifndef HAVE_HITSUJI_ROUTER_H
+#define HAVE_HITSUJI_ROUTER_H
 
-zend_object_value hitsuji_ctor(zend_class_entry *ce TSRMLS_DC);
-zend_object_value hitsuji_view_ctor(zend_class_entry *ce TSRMLS_DC);
+extern ZEND_DECLARE_MODULE_GLOBALS(hitsuji);
 
-#endif  // #ifndef HAVE_HITSUJI_OBJECT_H
+char *routerGetURL(void);
+char *routerGetMethod(void);
+int routerIsMethod(char *method, zval *array);
+int routerIsRoute(char *url, char *route);
+int routerFireAction(zval *array);
+
+
+#endif  // #ifndef HAVE_HITSUJI_ROUTER_H

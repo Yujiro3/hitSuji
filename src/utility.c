@@ -32,6 +32,7 @@
 
 #include "php.h"
 #include "ext/standard/md5.h"
+#include "zend_alloc.h"
 #include "zend_interfaces.h"
 
 #ifndef HAVE_PHP_HITSUJI_H
@@ -183,6 +184,30 @@ char *getNonce(const char *seed)
     strcpy(nonce, &md5str[18]);
 
     return nonce;
+}
+
+
+/**
+ * ファイル名の取得
+ *
+ * @access public
+ * @param char *nonce      nonce値
+ * @param const char *seed 種
+ * @return char
+ */
+char *getFilename(char *dir, char *name)
+{
+    char *filename;
+
+    filename = (char *)emalloc((strlen(dir) + strlen(name) + 1));
+
+    /* ディレクトリパスの追加 */
+    strcpy(filename, dir);
+
+    /* contentファイル名の追加 */
+    strcat(filename, name);
+
+    return filename;
 }
 
 #endif      // #ifndef HAVE_HITSUJI_UTILITY
