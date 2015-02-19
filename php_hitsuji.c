@@ -221,6 +221,11 @@ PHP_MSHUTDOWN_FUNCTION(hitSuji)
  */
 PHP_RINIT_FUNCTION(hitSuji)
 {
+    if (NULL == HITSUJI_G(requests)) {
+        ALLOC_INIT_ZVAL(HITSUJI_G(requests));
+        array_init(HITSUJI_G(requests));
+    }
+
     return SUCCESS;
 }
 
@@ -232,6 +237,31 @@ PHP_RINIT_FUNCTION(hitSuji)
  */
 PHP_RSHUTDOWN_FUNCTION(hitSuji)
 {
+    if (NULL != HITSUJI_G(page)) {
+        zval_ptr_dtor(&HITSUJI_G(page));
+        HITSUJI_G(page) = NULL;
+    }
+
+    if (NULL != HITSUJI_G(requests)) {
+        zval_ptr_dtor(&HITSUJI_G(requests));
+        HITSUJI_G(requests) = NULL;
+    }
+
+    if (NULL != HITSUJI_G(routes)) {
+        zval_ptr_dtor(&HITSUJI_G(routes));
+        HITSUJI_G(routes) = NULL;
+    }
+
+    if (NULL != HITSUJI_G(vars)) {
+        zval_ptr_dtor(&HITSUJI_G(vars));
+        HITSUJI_G(vars) = NULL;
+    }
+
+    if (NULL != HITSUJI_G(checks)) {
+        zval_ptr_dtor(&HITSUJI_G(checks));
+        HITSUJI_G(checks) = NULL;
+    }
+
     return SUCCESS;
 }
 
