@@ -392,17 +392,17 @@ PHP_METHOD(hitSuji, delegate)
         nvalid = hitsuji_nonce_verify(Z_ARRVAL_P(HITSUJI_G(page)));
     }
 
-    if (valid && nvalid) {
-        int result;
+    if (nvalid) {
+        int result = valid;
 
         /* アクション処理の実行 */
-        if (NULL != action && zend_is_callable(action, 0, NULL TSRMLS_CC)) {
+        if (valid && NULL != action && zend_is_callable(action, 0, NULL TSRMLS_CC)) {
             hitsuji_call_function_1_params(action, (zval **)&retval, data);
             zval_ptr_dtor(&data);
             data = retval;
+            data = array_bool_data(&result, data);
         }
 
-        data = array_bool_data(&result, data);
         if (result) {
             /* 成功時処理の実行 */
             if (NULL != done && zend_is_callable(done, 0, NULL TSRMLS_CC)) {
@@ -419,20 +419,11 @@ PHP_METHOD(hitSuji, delegate)
             }
         }
     } else {
-        if (nvalid) {
-            /* 失敗時処理の実行 */
-            if (NULL != fail && zend_is_callable(fail, 0, NULL TSRMLS_CC)) {
-                hitsuji_call_function_1_params(fail, (zval **)&retval, data);
-                zval_ptr_dtor(&data);
-                data = retval;
-            }
-        } else {
-            /* デフォルト処理の実行 */
-            if (NULL != always && zend_is_callable(always, 0, NULL TSRMLS_CC)) {
-                hitsuji_call_function_1_params(always, (zval **)&retval, data);
-                zval_ptr_dtor(&data);
-                data = retval;
-            }
+        /* デフォルト処理の実行 */
+        if (NULL != always && zend_is_callable(always, 0, NULL TSRMLS_CC)) {
+            hitsuji_call_function_1_params(always, (zval **)&retval, data);
+            zval_ptr_dtor(&data);
+            data = retval;
         }
     }
     RETVAL_ZVAL(data, 1, 1);
@@ -485,7 +476,7 @@ PHP_METHOD(hitSuji, quick)
     zval *property = NULL, *data = NULL, *parse = NULL;
     zval *action = NULL, *done = NULL, *fail = NULL;
     zval *retval = NULL;
-    int  result;
+    int  result = 0;
 
     /* 引数の受け取り */
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &property) == FAILURE) {
