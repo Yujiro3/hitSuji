@@ -134,10 +134,8 @@ static void php_hitsuji_init_globals(zend_hitsuji_globals *hitsuji_globals)
     hitsuji_globals->checks = NULL;
     hitsuji_globals->vars = NULL;
     hitsuji_globals->routes = NULL;
+    hitsuji_globals->requests =NULL;
     hitsuji_globals->page = NULL;
-
-    ALLOC_INIT_ZVAL(hitsuji_globals->requests);
-    array_init(hitsuji_globals->requests);
 }
 
 /**
@@ -183,31 +181,6 @@ PHP_MINIT_FUNCTION(hitSuji)
  */
 PHP_MSHUTDOWN_FUNCTION(hitSuji)
 {
-    if (NULL != HITSUJI_G(page)) {
-        zval_ptr_dtor(&HITSUJI_G(page));
-        HITSUJI_G(page) = NULL;
-    }
-
-    if (NULL != HITSUJI_G(requests)) {
-        zval_ptr_dtor(&HITSUJI_G(requests));
-        HITSUJI_G(requests) = NULL;
-    }
-
-    if (NULL != HITSUJI_G(routes)) {
-        zval_ptr_dtor(&HITSUJI_G(routes));
-        HITSUJI_G(routes) = NULL;
-    }
-
-    if (NULL != HITSUJI_G(vars)) {
-        zval_ptr_dtor(&HITSUJI_G(vars));
-        HITSUJI_G(vars) = NULL;
-    }
-
-    if (NULL != HITSUJI_G(checks)) {
-        zval_ptr_dtor(&HITSUJI_G(checks));
-        HITSUJI_G(checks) = NULL;
-    }
-
     UNREGISTER_INI_ENTRIES();
 
     return SUCCESS;

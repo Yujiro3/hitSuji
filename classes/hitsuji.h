@@ -241,6 +241,11 @@ PHP_METHOD(hitSuji, request)
         RETURN_FALSE;
     }
 
+    if (HITSUJI_G(requests) == NULL) {
+        ALLOC_INIT_ZVAL(HITSUJI_G(requests));
+        array_init(HITSUJI_G(requests));
+    }
+
     if (HITSUJI_G(vars) == NULL) {
         ALLOC_INIT_ZVAL(HITSUJI_G(vars));
         array_init(HITSUJI_G(vars));
@@ -261,6 +266,11 @@ PHP_METHOD(hitSuji, request)
     if (NULL != HITSUJI_G(checks)) {
         zval_ptr_dtor(&HITSUJI_G(checks));
         HITSUJI_G(checks) = NULL;
+    }
+
+    if (NULL != HITSUJI_G(requests)) {
+        zval_ptr_dtor(&HITSUJI_G(requests));
+        HITSUJI_G(requests) = NULL;
     }
 }
 
@@ -333,6 +343,11 @@ PHP_METHOD(hitSuji, delegate)
                 }
             } else if (strncasecmp(key, "bind", 4) == 0) {
                 if (zend_is_true(*row) && IS_ARRAY == Z_TYPE_PP(row)) {
+                    if (HITSUJI_G(requests) == NULL) {
+                        ALLOC_INIT_ZVAL(HITSUJI_G(requests));
+                        array_init(HITSUJI_G(requests));
+                    }
+
                     if (NULL == HITSUJI_G(vars)) {
                         ALLOC_INIT_ZVAL(HITSUJI_G(vars));
                         array_init(HITSUJI_G(vars));
@@ -440,6 +455,11 @@ PHP_METHOD(hitSuji, delegate)
     if (NULL != HITSUJI_G(vars)) {
         zval_ptr_dtor(&HITSUJI_G(vars));
         HITSUJI_G(vars) = NULL;
+    }
+
+    if (NULL != HITSUJI_G(requests)) {
+        zval_ptr_dtor(&HITSUJI_G(requests));
+        HITSUJI_G(requests) = NULL;
     }
 }
 
