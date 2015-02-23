@@ -379,7 +379,7 @@ int hitsuji_nonce_verify(const char *seed)
     char *nonce;
     zval *znonce = NULL, zvalue;
 
-    if (!getRequestValue(&zvalue, "nonce", "request")) {
+    if (!get_request_value(&zvalue, "nonce", "request")) {
         return reslut;
     }
 
@@ -393,7 +393,7 @@ int hitsuji_nonce_verify(const char *seed)
         strcpy(nonce, Z_STRVAL_P(znonce));
         zval_ptr_dtor(&znonce);
     } else {
-        getNonce(nonce, seed);
+        get_nonce(nonce, seed);
     }
 
     /* nonce値の比較 */
@@ -457,7 +457,7 @@ int hitsuji_verify(const char *key, zval *options)
 
     /* 値の取得 */
     ALLOC_INIT_ZVAL(zvalue);
-    getRequestValue(zvalue, key, track);
+    get_request_value(zvalue, key, track);
 
     if (zend_is_true(zvalue)) {
         if (IS_LONG == Z_TYPE_P(zvalue)) {

@@ -91,7 +91,7 @@ PHP_METHOD(hitSuji, nonce)
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &seed, &seed_len) == FAILURE) {
         RETURN_FALSE;
     }
-    nonce = getNonce(seed);
+    nonce = get_nonce(seed);
 
     RETVAL_STRING(nonce, 1);
     efree(nonce);
@@ -146,8 +146,8 @@ PHP_METHOD(hitSuji, router)
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &routes) == FAILURE) {
         RETURN_FALSE;
     }
-    url    = routerGetURL();
-    method = routerGetMethod();
+    url    = router_get_url();
+    method = router_get_method();
 
     if (HITSUJI_G(routes) == NULL) {
         ALLOC_INIT_ZVAL(HITSUJI_G(routes));
@@ -175,9 +175,9 @@ PHP_METHOD(hitSuji, router)
 
             if (NULL != url && strlen(route)) {
                 /* methodとルートのマッチ */
-                if (routerIsMethod(method, *row) && routerIsRoute(url, route)) {
+                if (router_is_method(method, *row) && router_is_route(url, route)) {
                     ZVAL_STRING(HITSUJI_G(page), route, 1);
-                    if (routerFireAction(*row)) {
+                    if (router_fire_action(*row)) {
                         matched = 1;
                         break;
                     }
@@ -192,7 +192,7 @@ PHP_METHOD(hitSuji, router)
         if (zend_is_callable(always, 0, NULL TSRMLS_CC)) {
             hitsuji_call_function_0_params(always, NULL);
         } else if (IS_STRING == Z_TYPE_P(always)) {
-            char *filename = getFilename(HITSUJI_G(page_path), Z_STRVAL_P(always));
+            char *filename = get_filename(HITSUJI_G(page_path), Z_STRVAL_P(always));
             hitsuji_execute_scripts(filename);
             efree(filename);
         }
@@ -500,7 +500,7 @@ PHP_METHOD(hitSuji, quick)
 {
     zval *property = NULL, *data = NULL, *parse = NULL;
     zval *action = NULL, *done = NULL, *always = NULL;
-    zval *retval = NULL;
+    zval *retval = NULL, *vars = NULL;
     int  result = 0;
 
     /* 引数の受け取り */
@@ -579,6 +579,8 @@ PHP_METHOD(hitSuji, quick)
             data = retval;
         }
     }
+
+    RETVAL_ZVAL(data, 1, 1);
 
     /* ローカルデータのクリア */
     if (NULL != data) {

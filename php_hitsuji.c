@@ -160,9 +160,6 @@ PHP_MINIT_FUNCTION(hitSuji)
     INIT_CLASS_ENTRY(ce, "hitSuji\\View", hitsuji_view_class_methods);
     hitsuji_view_ce = zend_register_internal_class(&ce TSRMLS_CC);
     hitsuji_view_ce->create_object = hitsuji_view_ctor;
-    zend_declare_property_string(hitsuji_view_ce, ZEND_STRL("dir"),    "", ZEND_ACC_PUBLIC TSRMLS_CC);
-    zend_declare_property_string(hitsuji_view_ce, ZEND_STRL("layout"), "", ZEND_ACC_PUBLIC TSRMLS_CC);
-    zend_declare_property_null(hitsuji_view_ce,   ZEND_STRL("vars"),       ZEND_ACC_PUBLIC TSRMLS_CC);
 
     /* 例外用クラスの登録 */
     INIT_CLASS_ENTRY(ce, "hitSuji\\Exception", NULL);

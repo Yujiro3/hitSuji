@@ -52,7 +52,7 @@
  * @param string tack         参照先テーブル
  * @return int
  */
-int getRequestValue(zval *retval_ptr, const char *key, const char *track)
+int get_request_value(zval *retval_ptr, const char *key, const char *track)
 {
     zval **value;
     zval *array_ptr = NULL;
@@ -138,7 +138,7 @@ int getRequestValue(zval *retval_ptr, const char *key, const char *track)
  * @param const char *seed 種
  * @return char
  */
-char *getNonce(const char *seed)
+char *get_nonce(const char *seed)
 {
     char *nonce;
     PHP_MD5_CTX context;
@@ -194,7 +194,7 @@ char *getNonce(const char *seed)
  * @param const char *seed 種
  * @return char
  */
-char *getFilename(char *dir, char *name)
+char *get_filename(char *dir, char *name)
 {
     char *filename;
 

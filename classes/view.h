@@ -35,6 +35,9 @@
  */
 typedef struct {
     zend_object std;
+    zval *dir;
+    zval *layout;
+    zval *vars;
 } hitsuji_view_t;
 
 /**
@@ -83,22 +86,24 @@ zend_function_entry hitsuji_view_class_methods[] = {
  */
 PHP_METHOD(HSJView, __construct)
 {
-    zval *zvars;
+    hitsuji_view_t *self;
 
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
     }
+    self = (hitsuji_view_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
+
     /* テンプレートファイル保存ディレクトリの取得と設定 */
-    zend_update_property_string(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("dir"), HITSUJI_G(template_path) TSRMLS_CC);
+    ALLOC_INIT_ZVAL(self->dir);
+    ZVAL_STRING(self->dir, HITSUJI_G(template_path), 1);
 
     /* レイアウトファイル */
-    zend_update_property_string(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("layout"), "layout.tpl" TSRMLS_CC);
+    ALLOC_INIT_ZVAL(self->layout);
+    ZVAL_STRING(self->layout, "layout.tpl", 1);
 
     /* 変数保存用配列の初期化 */
-    ALLOC_INIT_ZVAL(zvars);
-    array_init(zvars);
-    zend_update_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("vars"), zvars TSRMLS_CC);
-    zval_ptr_dtor(&zvars);
+    ALLOC_INIT_ZVAL(self->vars);
+    array_init(self->vars);
 }
 
 /**
@@ -108,8 +113,23 @@ PHP_METHOD(HSJView, __construct)
  */
 PHP_METHOD(HSJView, __destruct)
 {
+    hitsuji_view_t *self;
+
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
+    }
+    self = (hitsuji_view_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
+
+    if (NULL != self->vars) {
+        zval_ptr_dtor(&self->vars);
+    }
+
+    if (NULL != self->layout) {
+        zval_ptr_dtor(&self->layout);
+    }
+
+    if (NULL != self->dir) {
+        zval_ptr_dtor(&self->dir);
     }
 }
 
@@ -122,6 +142,7 @@ PHP_METHOD(HSJView, __destruct)
  */
 PHP_METHOD(HSJView, layout)
 {
+    hitsuji_view_t *self;
     char *file = NULL;
     uint file_len;
 
@@ -129,7 +150,9 @@ PHP_METHOD(HSJView, layout)
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &file, &file_len) == FAILURE) {
         RETURN_FALSE;
     }
-    zend_update_property_string(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("layout"), file TSRMLS_CC);
+    self = (hitsuji_view_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
+
+    ZVAL_STRINGL(self->layout, file, file_len, 1);
 
     RETURN_CHAIN();
 }
@@ -143,22 +166,21 @@ PHP_METHOD(HSJView, layout)
  */
 PHP_METHOD(HSJView, content)
 {
-    zval *zdir, *zvars;
+    hitsuji_view_t *self;
+    char *filename;
     char *file = NULL;
     uint file_len;
-    char *filename;
 
     /* 引数の受け取り */
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &file, &file_len) == FAILURE) {
         RETURN_FALSE;
     }
-    zdir = zend_read_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("dir"), 1 TSRMLS_CC);
+    self = (hitsuji_view_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
     /* contentファイルのフルパス取得 */
-    filename = getFilename(Z_STRVAL_P(zdir), file);
+    filename = get_filename(Z_STRVAL_P(self->dir), file);
 
-    zvars = zend_read_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("vars"), 1 TSRMLS_CC);
-    add_assoc_string_ex(zvars, ZEND_STRS("content"), filename, 1);
+    add_assoc_string_ex(self->vars, ZEND_STRS("content"), filename, 1);
 
     efree(filename);
 
@@ -174,16 +196,17 @@ PHP_METHOD(HSJView, content)
  */
 PHP_METHOD(HSJView, assigns)
 {
-    zval *zvars, *zvalues;
+    hitsuji_view_t *self;
+    zval *zvalues;
 
     /* 引数の受け取り */
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &zvalues) == FAILURE) {
         RETURN_FALSE;
     }
+    self = (hitsuji_view_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
     /* 配列のマージ */
-    zvars = zend_read_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("vars"), 1 TSRMLS_CC);
-    zend_hash_merge(Z_ARRVAL_P(zvars), Z_ARRVAL_P(zvalues), (copy_ctor_func_t)zval_add_ref, NULL, sizeof(zval *), 1);
+    zend_hash_merge(Z_ARRVAL_P(self->vars), Z_ARRVAL_P(zvalues), (copy_ctor_func_t)zval_add_ref, NULL, sizeof(zval *), 1);
 
     RETURN_CHAIN();
 }
@@ -198,7 +221,8 @@ PHP_METHOD(HSJView, assigns)
  */
 PHP_METHOD(HSJView, assign)
 {
-    zval *zvars, *zvalue;
+    hitsuji_view_t *self;
+    zval *zvalue;
     char *key = NULL;
     uint key_len;
 
@@ -206,30 +230,29 @@ PHP_METHOD(HSJView, assign)
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz", &key, &key_len, &zvalue) == FAILURE) {
         RETURN_FALSE;
     }
+    self = (hitsuji_view_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
     /* 配列の追加 */
-    zvars = zend_read_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("vars"), 1 TSRMLS_CC);
-
     switch (Z_TYPE_P(zvalue)) {
     case IS_NULL:
-        add_assoc_null_ex(zvars, key, key_len + 1);
+        add_assoc_null_ex(self->vars, key, key_len + 1);
         break;
     case IS_LONG:
     case IS_RESOURCE:
-        add_assoc_long_ex(zvars, key, key_len + 1, Z_LVAL_P(zvalue));
+        add_assoc_long_ex(self->vars, key, key_len + 1, Z_LVAL_P(zvalue));
         break;
     case IS_DOUBLE:
-        add_assoc_double_ex(zvars, key, key_len + 1, Z_DVAL_P(zvalue));
+        add_assoc_double_ex(self->vars, key, key_len + 1, Z_DVAL_P(zvalue));
         break;
     case IS_BOOL:
-        add_assoc_bool_ex(zvars, key, key_len + 1, Z_LVAL_P(zvalue));
+        add_assoc_bool_ex(self->vars, key, key_len + 1, Z_LVAL_P(zvalue));
         break;
     case IS_ARRAY:
     case IS_OBJECT:
-        add_assoc_zval_ex(zvars, key, key_len + 1, zvalue);
+        add_assoc_zval_ex(self->vars, key, key_len + 1, zvalue);
         break;
     case IS_STRING:
-        add_assoc_string_ex(zvars, key, key_len + 1, Z_STRVAL_P(zvalue), 1);
+        add_assoc_string_ex(self->vars, key, key_len + 1, Z_STRVAL_P(zvalue), 1);
         break;
     }
 
@@ -244,7 +267,7 @@ PHP_METHOD(HSJView, assign)
  */
 PHP_METHOD(HSJView, display)
 {
-    zval *zdir, *zlayout, *zvars;
+    hitsuji_view_t *self;
     zend_file_handle file_handle;
     char *filename;
 
@@ -252,17 +275,13 @@ PHP_METHOD(HSJView, display)
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
     }
-    zvars = zend_read_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("vars"), 1 TSRMLS_CC);
+    self = (hitsuji_view_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
     /* extract() PHP関数の実行 */
-    zend_call_method_with_1_params(NULL, NULL, NULL, "extract", NULL, zvars);
-
-    /* レイアウトファイル名の追加 */
-    zlayout = zend_read_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("layout"), 1 TSRMLS_CC);
+    zend_call_method_with_1_params(NULL, NULL, NULL, "extract", NULL, self->vars);
 
     /* レイアウトのフルパスを取得 */
-    zdir = zend_read_property(Z_OBJCE_P(getThis()), getThis(), ZEND_STRL("dir"), 1 TSRMLS_CC);
-    filename = getFilename(Z_STRVAL_P(zdir), Z_STRVAL_P(zlayout));
+    filename = get_filename(Z_STRVAL_P(self->dir), Z_STRVAL_P(self->layout));
 
     /* 外部ファイルの読み込み */
     if (php_stream_open_for_zend_ex(filename, &file_handle, USE_PATH | STREAM_OPEN_FOR_INCLUDE TSRMLS_CC) == SUCCESS) {

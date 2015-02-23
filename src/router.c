@@ -51,7 +51,7 @@
  * @access public
  * @return *char
  */
-char *routerGetURL(void)
+char *router_get_url(void)
 {
     char *result = NULL;
     char *uri = NULL;
@@ -103,7 +103,7 @@ char *routerGetURL(void)
  * @access public
  * @return *char
  */
-char *routerGetMethod(void)
+char *router_get_method(void)
 {
     char *result = NULL;
     const char *method = NULL;
@@ -129,7 +129,7 @@ char *routerGetMethod(void)
  * @param  zval *array
  * @return int
  */
-int routerIsMethod(char *method, zval *array)
+int router_is_method(char *method, zval *array)
 {
     HashPosition pos;
     zval **row;
@@ -160,7 +160,7 @@ int routerIsMethod(char *method, zval *array)
  * @param  zval *array
  * @return int
  */
-int routerIsRoute(char *url, char *route)
+int router_is_route(char *url, char *route)
 {
     zval replace_val, zmatch = {0};
     pcre_cache_entry *pcre = NULL;
@@ -235,7 +235,7 @@ char *router_get_filename(char *name)
  * @param  zval *array
  * @return int
  */
-int routerFireAction(zval *array)
+int router_fire_action(zval *array)
 {
     HashPosition pos;
     zval **row;

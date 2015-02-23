@@ -111,6 +111,10 @@ zend_object_value hitsuji_view_ctor(zend_class_entry *ce TSRMLS_DC)
     object_properties_init(&self->std, ce);
     rebuild_object_properties(&self->std);
 
+    self->dir    = NULL;
+    self->layout = NULL;
+    self->vars   = NULL;
+
     retval.handle = zend_objects_store_put(
         self, 
         (zend_objects_store_dtor_t)zend_objects_destroy_object, 

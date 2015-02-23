@@ -32,11 +32,11 @@
 
 extern ZEND_DECLARE_MODULE_GLOBALS(hitsuji);
 
-char *routerGetURL(void);
-char *routerGetMethod(void);
-int routerIsMethod(char *method, zval *array);
-int routerIsRoute(char *url, char *route);
-int routerFireAction(zval *array);
+char *router_get_url(void);
+char *router_get_method(void);
+int router_is_method(char *method, zval *array);
+int router_is_route(char *url, char *route);
+int router_fire_action(zval *array);
 
 
 #endif  // #ifndef HAVE_HITSUJI_ROUTER_H

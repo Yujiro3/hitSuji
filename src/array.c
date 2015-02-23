@@ -135,6 +135,47 @@ void array_all_clean(zval *array)
 }
 
 /**
+ * 変数を生成して変数のコピー
+ *
+ * @access public
+ * @param zval *source コピー元
+ * @return *zval
+ */
+zval *array_alloc_copy(zval *source, int dtor)
+{
+    zval *dest = NULL;
+    ALLOC_INIT_ZVAL(dest);
+
+    switch (Z_TYPE_P(source)) {
+    case IS_LONG:
+    case IS_RESOURCE:
+        ZVAL_LONG(dest, Z_LVAL_P(source));
+        break;
+    case IS_DOUBLE:
+        ZVAL_DOUBLE(dest, Z_DVAL_P(source));
+        break;
+    case IS_BOOL:
+        ZVAL_BOOL(dest, Z_LVAL_P(source));
+        break;
+    case IS_STRING:
+        ZVAL_STRING(dest, Z_STRVAL_P(source), 1);
+        break;
+    case IS_ARRAY:
+    case IS_OBJECT:
+        ZVAL_ZVAL(dest, source, 1, 0);
+        break;
+    default :
+        return source;
+    }
+
+    if (dtor) {
+        zval_ptr_dtor(&source);
+    }
+
+    return dest;
+}
+
+/**
  * 配列をbool値とデータに分離
  *
  * @access public
@@ -145,23 +186,23 @@ void array_all_clean(zval *array)
 zval *array_bool_data(int *result, zval *array) 
 {
     HashPosition position;
-    zval **data, *tmp;
+    zval **data, *retval;
     char *key = NULL;
     uint key_len = 0;
     ulong index;
 
     *result = 0;
     if (!zend_is_true(array)) {
-        return array;
+        return array_alloc_copy(array, 1);
     }
 
     if (IS_ARRAY != Z_TYPE_P(array)) {
         *result = 1;
-        return array;
+        return array_alloc_copy(array, 1);
     }
 
     if (zend_hash_num_elements(Z_ARRVAL_P(array)) == 0) {
-        return array;
+        return array_alloc_copy(array, 1);
     }
 
     /* 先頭の配列をチェック */
@@ -173,7 +214,7 @@ zval *array_bool_data(int *result, zval *array)
             }
         } else {
             *result = 1;
-            return array;
+            return array_alloc_copy(array, 1);
         }
     }
 
@@ -182,15 +223,12 @@ zval *array_bool_data(int *result, zval *array)
 
     if (zend_hash_get_current_data_ex(Z_ARRVAL_P(array), (void **)&data, &position) != SUCCESS) {
         *result = 1;
-        return NULL;
+        return array_alloc_copy(array, 1);
     }
-    ALLOC_INIT_ZVAL(tmp);
-    ZVAL_ZVAL(tmp, *data, 1, 0);
-
+    retval = array_alloc_copy(*data, 0);
     zval_ptr_dtor(&array);
-    array = tmp;
 
-    return array;
+    return retval;
 }
 
 #endif      // #ifndef HAVE_HITSUJI_ARRAY
