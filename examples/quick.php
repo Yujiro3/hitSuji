@@ -31,8 +31,8 @@ hitSuji::quick([
         echo "done\n";
         print_r($data);
     },
-    'fail' => function ($data) {
-        echo "fail\n";
+    'always' => function ($data) {
+        echo "always\n";
         print_r($data);
     }
 ]);

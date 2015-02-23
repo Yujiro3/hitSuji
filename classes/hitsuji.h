@@ -461,6 +461,11 @@ PHP_METHOD(hitSuji, delegate)
         zval_ptr_dtor(&HITSUJI_G(requests));
         HITSUJI_G(requests) = NULL;
     }
+
+    /* ローカルデータのクリア */
+    if (NULL != data) {
+        zval_ptr_dtor(&data);
+    }
 }
 
 /**
@@ -494,7 +499,7 @@ PHP_METHOD(hitSuji, delegate)
 PHP_METHOD(hitSuji, quick)
 {
     zval *property = NULL, *data = NULL, *parse = NULL;
-    zval *action = NULL, *done = NULL, *fail = NULL;
+    zval *action = NULL, *done = NULL, *always = NULL;
     zval *retval = NULL;
     int  result = 0;
 
@@ -530,8 +535,8 @@ PHP_METHOD(hitSuji, quick)
                         action = *row;
                     } else if (strncasecmp(key, "done", 4) == 0) {
                         done = *row;
-                    } else if (strncasecmp(key, "fail", 4) == 0) {
-                        fail = *row;
+                    } else if (strncasecmp(key, "always", 6) == 0) {
+                        always = *row;
                     }
                 } // if (zend_is_callable(*row, 0, NULL TSRMLS_CC)) 
             } // if (strncasecmp(key, "data", 4)) 
@@ -568,14 +573,17 @@ PHP_METHOD(hitSuji, quick)
         }
     } else {
         /* 失敗時処理の実行 */
-        if (NULL != fail && zend_is_callable(fail, 0, NULL TSRMLS_CC)) {
-            hitsuji_call_function_1_params(fail, (zval **)&retval, data);
+        if (NULL != always && zend_is_callable(always, 0, NULL TSRMLS_CC)) {
+            hitsuji_call_function_1_params(always, (zval **)&retval, data);
             zval_ptr_dtor(&data);
             data = retval;
         }
     }
 
-    RETVAL_ZVAL(data, 1, 1);
+    /* ローカルデータのクリア */
+    if (NULL != data) {
+        zval_ptr_dtor(&data);
+    }
 }
 
 #   endif       /* #ifndef HAVE_HITSUJI_CLASS_HITSUJI */
