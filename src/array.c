@@ -144,24 +144,28 @@ void array_all_clean(zval *array)
 zval *array_alloc_copy(zval *source, int dtor)
 {
     zval *dest = NULL;
-    ALLOC_INIT_ZVAL(dest);
 
     switch (Z_TYPE_P(source)) {
     case IS_LONG:
     case IS_RESOURCE:
+        ALLOC_INIT_ZVAL(dest);
         ZVAL_LONG(dest, Z_LVAL_P(source));
         break;
     case IS_DOUBLE:
+        ALLOC_INIT_ZVAL(dest);
         ZVAL_DOUBLE(dest, Z_DVAL_P(source));
         break;
     case IS_BOOL:
+        ALLOC_INIT_ZVAL(dest);
         ZVAL_BOOL(dest, Z_LVAL_P(source));
         break;
     case IS_STRING:
+        ALLOC_INIT_ZVAL(dest);
         ZVAL_STRING(dest, Z_STRVAL_P(source), 1);
         break;
     case IS_ARRAY:
     case IS_OBJECT:
+        ALLOC_INIT_ZVAL(dest);
         ZVAL_ZVAL(dest, source, 1, 0);
         break;
     default :
@@ -214,6 +218,9 @@ zval *array_bool_data(int *result, zval *array)
             }
         } else {
             *result = 1;
+            if (IS_ARRAY == Z_TYPE_P(array)) {
+                return array;
+            }
             return array_alloc_copy(array, 1);
         }
     }

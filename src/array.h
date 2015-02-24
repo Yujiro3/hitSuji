@@ -44,6 +44,7 @@ void hash_all_clean(HashTable *array);
 
 void array_trim_index(zval *array);
 void array_all_clean(zval *array);
+zval *array_alloc_copy(zval *source, int dtor);
 zval *array_bool_data(int *result, zval *array);
 
 #endif  // #ifndef HAVE_HITSUJI_ARRAY_H

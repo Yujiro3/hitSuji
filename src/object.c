@@ -82,12 +82,12 @@ zend_object_value hitsuji_ctor(zend_class_entry *ce TSRMLS_DC)
 }
 
 /**
- * viewクラスのデストラクタ (メモリ解放)
+ * templateクラスのデストラクタ (メモリ解放)
  *
- * @param hitsuji_view_t *self 開放する構造体
+ * @param hitsuji_template_t *self 開放する構造体
  * @return void
  */
-static void hitsuji_view_dtor(hitsuji_view_t *self TSRMLS_DC)
+static void hitsuji_template_dtor(hitsuji_template_t *self TSRMLS_DC)
 {
     /* カラムリストの開放 */
     zend_object_std_dtor(&self->std TSRMLS_CC);
@@ -95,15 +95,15 @@ static void hitsuji_view_dtor(hitsuji_view_t *self TSRMLS_DC)
 }
 
 /**
- * viewクラスのコンストラクタ (メモリ確保)
+ * templateクラスのコンストラクタ (メモリ確保)
  *
  * @param zend_class_entry *ce クラスエントリ
  * @return zend_object_value
  */
-zend_object_value hitsuji_view_ctor(zend_class_entry *ce TSRMLS_DC)
+zend_object_value hitsuji_template_ctor(zend_class_entry *ce TSRMLS_DC)
 {
     zend_object_value retval;
-    hitsuji_view_t *self;
+    hitsuji_template_t *self;
 
     self = ecalloc(1, sizeof(*self));
 
@@ -118,7 +118,7 @@ zend_object_value hitsuji_view_ctor(zend_class_entry *ce TSRMLS_DC)
     retval.handle = zend_objects_store_put(
         self, 
         (zend_objects_store_dtor_t)zend_objects_destroy_object, 
-        (zend_objects_free_object_storage_t)hitsuji_view_dtor, 
+        (zend_objects_free_object_storage_t)hitsuji_template_dtor, 
         NULL TSRMLS_CC
     );
     retval.handlers = zend_get_std_object_handlers();

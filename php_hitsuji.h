@@ -45,7 +45,7 @@
 #endif
 
 extern zend_class_entry *hitsuji_ce;
-extern zend_class_entry *hitsuji_view_ce;
+extern zend_class_entry *hitsuji_template_ce;
 extern zend_class_entry *hitsuji_exception_ce;
 /*
 extern zend_module_entry hitsuji_module_entry;
@@ -142,8 +142,8 @@ ZEND_END_MODULE_GLOBALS(hitsuji)
 #   include "classes/hitsuji.h"
 #endif
 
-#ifndef HAVE_HITSUJI_CLASS_VIEW_H
-#   include "classes/view.h"
+#ifndef HAVE_HITSUJI_CLASS_TEMPLATE_H
+#   include "classes/template.h"
 #endif
 
 #endif    /* HAVE_PHP_HITSUJI_H */

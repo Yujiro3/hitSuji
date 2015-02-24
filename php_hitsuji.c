@@ -81,7 +81,7 @@ static int le_hitsuji;
 
 /* ƒNƒ‰ƒX\‘¢‘Ì */
 zend_class_entry *hitsuji_ce = NULL;
-zend_class_entry *hitsuji_view_ce = NULL;
+zend_class_entry *hitsuji_template_ce = NULL;
 zend_class_entry *hitsuji_exception_ce = NULL;
 
 /**
@@ -156,10 +156,10 @@ PHP_MINIT_FUNCTION(hitSuji)
     hitsuji_ce = zend_register_internal_class(&ce TSRMLS_CC);
     hitsuji_ce->create_object = hitsuji_ctor;
 
-    /* viewƒNƒ‰ƒX‚Ì“o˜^ */
-    INIT_CLASS_ENTRY(ce, "hitSuji\\View", hitsuji_view_class_methods);
-    hitsuji_view_ce = zend_register_internal_class(&ce TSRMLS_CC);
-    hitsuji_view_ce->create_object = hitsuji_view_ctor;
+    /* templateƒNƒ‰ƒX‚Ì“o˜^ */
+    INIT_CLASS_ENTRY(ce, "hitSuji\\Template", hitsuji_template_class_methods);
+    hitsuji_template_ce = zend_register_internal_class(&ce TSRMLS_CC);
+    hitsuji_template_ce->create_object = hitsuji_template_ctor;
 
     /* —áŠO—pƒNƒ‰ƒX‚Ì“o˜^ */
     INIT_CLASS_ENTRY(ce, "hitSuji\\Exception", NULL);
@@ -253,8 +253,8 @@ PHP_MINFO_FUNCTION(hitSuji)
 #   include "classes/hitsuji.h"
 #endif
 
-#ifndef HAVE_HITSUJI_CLASS_VIEW
-#   include "classes/view.h"
+#ifndef HAVE_HITSUJI_CLASS_TEMPLATE
+#   include "classes/template.h"
 #endif
 
 #endif      // #ifndef HAVE_PHP_HITSUJI

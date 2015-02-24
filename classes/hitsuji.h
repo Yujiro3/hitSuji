@@ -104,19 +104,19 @@ PHP_METHOD(hitSuji, nonce)
  */
 PHP_METHOD(hitSuji, template)
 {
-    zval *view;
+    zval *template;
 
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
     }
 
     /* ビューの初期化 */
-    ALLOC_INIT_ZVAL(view);
-    object_init_ex(view, hitsuji_view_ce);
-    CALL_METHOD(HSJView, __construct, NULL, view);
+    ALLOC_INIT_ZVAL(template);
+    object_init_ex(template, hitsuji_template_ce);
+    CALL_METHOD(HSJTemplate, __construct, NULL, template);
 
     /* 返り値へオブジェクトを渡す */
-    RETURN_ZVAL(view, 1, 1);
+    RETURN_ZVAL(template, 1, 1);
 }
 
 /**
@@ -414,8 +414,7 @@ PHP_METHOD(hitSuji, delegate)
         if (valid && NULL != action && zend_is_callable(action, 0, NULL TSRMLS_CC)) {
             hitsuji_call_function_1_params(action, (zval **)&retval, data);
             zval_ptr_dtor(&data);
-            data = retval;
-            data = array_bool_data(&result, data);
+            data = array_bool_data(&result, retval);
         }
 
         if (result) {
@@ -494,7 +493,7 @@ PHP_METHOD(hitSuji, delegate)
  * </code>
  *
  * @param  array  $property
- * @return string
+ * @return void
  */
 PHP_METHOD(hitSuji, quick)
 {
@@ -560,27 +559,20 @@ PHP_METHOD(hitSuji, quick)
     if (NULL != action && zend_is_callable(action, 0, NULL TSRMLS_CC)) {
         hitsuji_call_function_1_params(action, (zval **)&retval, data);
         zval_ptr_dtor(&data);
-        data = retval;
+        data = array_bool_data(&result, retval);
     }
 
-    data = array_bool_data(&result, data);
     if (result) {
         /* 失敗時処理の実行 */
         if (NULL != done && zend_is_callable(done, 0, NULL TSRMLS_CC)) {
-            hitsuji_call_function_1_params(done, (zval **)&retval, data);
-            zval_ptr_dtor(&data);
-            data = retval;
+            hitsuji_call_function_1_params(done, NULL, data);
         }
     } else {
-        /* 失敗時処理の実行 */
+        /* デフォルト処理の実行 */
         if (NULL != always && zend_is_callable(always, 0, NULL TSRMLS_CC)) {
-            hitsuji_call_function_1_params(always, (zval **)&retval, data);
-            zval_ptr_dtor(&data);
-            data = retval;
+            hitsuji_call_function_1_params(always, NULL, data);
         }
     }
-
-    RETVAL_ZVAL(data, 1, 1);
 
     /* ローカルデータのクリア */
     if (NULL != data) {
