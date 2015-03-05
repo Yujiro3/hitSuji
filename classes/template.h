@@ -27,8 +27,8 @@
  * @filesource
  */
 
-#ifndef HAVE_HITSUJI_CLASS_VIEW_H
-#define HAVE_HITSUJI_CLASS_VIEW_H
+#ifndef HAVE_HITSUJI_CLASS_TEMPLATE_H
+#define HAVE_HITSUJI_CLASS_TEMPLATE_H
 
 /**
  * \hitSuji\Controllerクラス::メンバー変数定義
@@ -38,60 +38,60 @@ typedef struct {
     zval *dir;
     zval *layout;
     zval *vars;
-} hitsuji_view_t;
+} hitsuji_template_t;
 
 /**
  * クラスの宣言・登録部分
  */
-PHP_METHOD(HSJView, __construct);
-PHP_METHOD(HSJView, __destruct);
-PHP_METHOD(HSJView, layout);
-PHP_METHOD(HSJView, content);
-PHP_METHOD(HSJView, assigns);
-PHP_METHOD(HSJView, assign);
-PHP_METHOD(HSJView, display);
+PHP_METHOD(HSJTemplate, __construct);
+PHP_METHOD(HSJTemplate, __destruct);
+PHP_METHOD(HSJTemplate, layout);
+PHP_METHOD(HSJTemplate, content);
+PHP_METHOD(HSJTemplate, assigns);
+PHP_METHOD(HSJTemplate, assign);
+PHP_METHOD(HSJTemplate, display);
 
-ZEND_BEGIN_ARG_INFO_EX(HSJView_0_param, 0, ZEND_RETURN_VALUE, 0)
+ZEND_BEGIN_ARG_INFO_EX(HSJTemplate_0_param, 0, ZEND_RETURN_VALUE, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(HSJView_1_param, 0, ZEND_RETURN_VALUE, 1)
+ZEND_BEGIN_ARG_INFO_EX(HSJTemplate_1_param, 0, ZEND_RETURN_VALUE, 1)
     ZEND_ARG_INFO(0, param1)
 ZEND_END_ARG_INFO()
 
-extern zend_function_entry hitsuji_view_class_methods[];
+extern zend_function_entry hitsuji_template_class_methods[];
 
 #else
-#   ifndef HAVE_HITSUJI_CLASS_VIEW
-#   define HAVE_HITSUJI_CLASS_VIEW
+#   ifndef HAVE_HITSUJI_CLASS_TEMPLATE
+#   define HAVE_HITSUJI_CLASS_TEMPLATE
 
 /**
  * クラスの実装部分
  */
-zend_function_entry hitsuji_view_class_methods[] = {
-    PHP_ME(HSJView, __construct,     HSJView_0_param, ZEND_ACC_PUBLIC | ZEND_ACC_CTOR)
-    PHP_ME(HSJView, __destruct,      HSJView_0_param, ZEND_ACC_PUBLIC | ZEND_ACC_DTOR)
-    PHP_ME(HSJView, layout,          HSJView_1_param, ZEND_ACC_PUBLIC)
-    PHP_ME(HSJView, content,         HSJView_1_param, ZEND_ACC_PUBLIC)
-    PHP_ME(HSJView, assigns,         HSJView_1_param, ZEND_ACC_PUBLIC)
-    PHP_ME(HSJView, assign,          HSJView_1_param, ZEND_ACC_PUBLIC)
-    PHP_ME(HSJView, display,         HSJView_0_param, ZEND_ACC_PUBLIC)
+zend_function_entry hitsuji_template_class_methods[] = {
+    PHP_ME(HSJTemplate, __construct,     HSJTemplate_0_param, ZEND_ACC_PUBLIC | ZEND_ACC_CTOR)
+    PHP_ME(HSJTemplate, __destruct,      HSJTemplate_0_param, ZEND_ACC_PUBLIC | ZEND_ACC_DTOR)
+    PHP_ME(HSJTemplate, layout,          HSJTemplate_1_param, ZEND_ACC_PUBLIC)
+    PHP_ME(HSJTemplate, content,         HSJTemplate_1_param, ZEND_ACC_PUBLIC)
+    PHP_ME(HSJTemplate, assigns,         HSJTemplate_1_param, ZEND_ACC_PUBLIC)
+    PHP_ME(HSJTemplate, assign,          HSJTemplate_1_param, ZEND_ACC_PUBLIC)
+    PHP_ME(HSJTemplate, display,         HSJTemplate_0_param, ZEND_ACC_PUBLIC)
 
     PHP_FE_END    /* Must be the last line in groonga_functions[] */
 };
 
 /**
- * HSJViewクラス関数:コンストラクタ
+ * HSJTemplateクラス関数:コンストラクタ
  *
  * @return object
  */
-PHP_METHOD(HSJView, __construct)
+PHP_METHOD(HSJTemplate, __construct)
 {
-    hitsuji_view_t *self;
+    hitsuji_template_t *self;
 
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
     }
-    self = (hitsuji_view_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
+    self = (hitsuji_template_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
     /* テンプレートファイル保存ディレクトリの取得と設定 */
     ALLOC_INIT_ZVAL(self->dir);
@@ -107,18 +107,18 @@ PHP_METHOD(HSJView, __construct)
 }
 
 /**
- * HSJViewクラス関数:コンストラクタ
+ * HSJTemplateクラス関数:コンストラクタ
  *
  * @return object
  */
-PHP_METHOD(HSJView, __destruct)
+PHP_METHOD(HSJTemplate, __destruct)
 {
-    hitsuji_view_t *self;
+    hitsuji_template_t *self;
 
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
     }
-    self = (hitsuji_view_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
+    self = (hitsuji_template_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
     if (NULL != self->vars) {
         zval_ptr_dtor(&self->vars);
@@ -140,9 +140,9 @@ PHP_METHOD(HSJView, __destruct)
  * @param string $page ページ
  * @return void
  */
-PHP_METHOD(HSJView, layout)
+PHP_METHOD(HSJTemplate, layout)
 {
-    hitsuji_view_t *self;
+    hitsuji_template_t *self;
     char *file = NULL;
     uint file_len;
 
@@ -150,7 +150,7 @@ PHP_METHOD(HSJView, layout)
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &file, &file_len) == FAILURE) {
         RETURN_FALSE;
     }
-    self = (hitsuji_view_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
+    self = (hitsuji_template_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
     ZVAL_STRINGL(self->layout, file, file_len, 1);
 
@@ -164,9 +164,9 @@ PHP_METHOD(HSJView, layout)
  * @param string $content
  * @return void
  */
-PHP_METHOD(HSJView, content)
+PHP_METHOD(HSJTemplate, content)
 {
-    hitsuji_view_t *self;
+    hitsuji_template_t *self;
     char *filename;
     char *file = NULL;
     uint file_len;
@@ -175,7 +175,7 @@ PHP_METHOD(HSJView, content)
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &file, &file_len) == FAILURE) {
         RETURN_FALSE;
     }
-    self = (hitsuji_view_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
+    self = (hitsuji_template_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
     /* contentファイルのフルパス取得 */
     filename = get_filename(Z_STRVAL_P(self->dir), file);
@@ -194,16 +194,16 @@ PHP_METHOD(HSJView, content)
  * @param array $vars
  * @return this
  */
-PHP_METHOD(HSJView, assigns)
+PHP_METHOD(HSJTemplate, assigns)
 {
-    hitsuji_view_t *self;
+    hitsuji_template_t *self;
     zval *zvalues;
 
     /* 引数の受け取り */
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &zvalues) == FAILURE) {
         RETURN_FALSE;
     }
-    self = (hitsuji_view_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
+    self = (hitsuji_template_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
     /* 配列のマージ */
     zend_hash_merge(Z_ARRVAL_P(self->vars), Z_ARRVAL_P(zvalues), (copy_ctor_func_t)zval_add_ref, NULL, sizeof(zval *), 1);
@@ -219,9 +219,9 @@ PHP_METHOD(HSJView, assigns)
  * @param mixed $value
  * @return this
  */
-PHP_METHOD(HSJView, assign)
+PHP_METHOD(HSJTemplate, assign)
 {
-    hitsuji_view_t *self;
+    hitsuji_template_t *self;
     zval *zvalue;
     char *key = NULL;
     uint key_len;
@@ -230,7 +230,7 @@ PHP_METHOD(HSJView, assign)
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz", &key, &key_len, &zvalue) == FAILURE) {
         RETURN_FALSE;
     }
-    self = (hitsuji_view_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
+    self = (hitsuji_template_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
     /* 配列の追加 */
     switch (Z_TYPE_P(zvalue)) {
@@ -265,9 +265,9 @@ PHP_METHOD(HSJView, assign)
  * @access public
  * @return void
  */
-PHP_METHOD(HSJView, display)
+PHP_METHOD(HSJTemplate, display)
 {
-    hitsuji_view_t *self;
+    hitsuji_template_t *self;
     zend_file_handle file_handle;
     char *filename;
 
@@ -275,7 +275,7 @@ PHP_METHOD(HSJView, display)
     if (zend_parse_parameters_none() != SUCCESS) {
         RETURN_FALSE;
     }
-    self = (hitsuji_view_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
+    self = (hitsuji_template_t *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
     /* extract() PHP関数の実行 */
     zend_call_method_with_1_params(NULL, NULL, NULL, "extract", NULL, self->vars);
@@ -305,5 +305,5 @@ PHP_METHOD(HSJView, display)
 }
 
 
-#   endif       /* #ifndef HAVE_HITSUJI_CLASS_VIEW */
-#endif      /* #ifndef HAVE_HITSUJI_CLASS_VIEW_H */
+#   endif       /* #ifndef HAVE_HITSUJI_CLASS_TEMPLATE */
+#endif      /* #ifndef HAVE_HITSUJI_CLASS_TEMPLATE_H */
