@@ -146,6 +146,7 @@ PHP_METHOD(hitSuji, router)
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &routes) == FAILURE) {
         RETURN_FALSE;
     }
+
     url    = router_get_url();
     method = router_get_method();
 
@@ -188,7 +189,7 @@ PHP_METHOD(hitSuji, router)
         } // for
     }
 
-    if (!matched) {
+    if (!matched && NULL != always) {
         if (zend_is_callable(always, 0, NULL TSRMLS_CC)) {
             hitsuji_call_function_0_params(always, NULL);
         } else if (IS_STRING == Z_TYPE_P(always)) {
@@ -212,6 +213,7 @@ PHP_METHOD(hitSuji, router)
     if (NULL != method) {
         efree(method);
     }
+
     if (NULL != url) {
         efree(url);
     }

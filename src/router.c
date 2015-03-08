@@ -62,10 +62,12 @@ char *router_get_url(void)
         zval **url_pp;
         int pos;
 
-        if (SUCCESS == zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "REQUEST_URI", 12, (void **) &url_pp)) { 
+        if (PG(http_globals)[TRACK_VARS_SERVER] &&
+            zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "REQUEST_URI", sizeof("REQUEST_URI"), (void **) &url_pp) == SUCCESS
+        ) {
             uri = Z_STRVAL_PP(url_pp);
         } else {
-            uri = SG(request_info).path_translated;
+            uri = SG(request_info).request_uri;
         }
         uri_len = strlen(uri);
 
@@ -263,6 +265,7 @@ int router_fire_action(zval *array)
     ) {
         if (zend_is_callable(*row, 0, NULL TSRMLS_CC)) {
             hitsuji_call_function_args(array, NULL, HITSUJI_G(routes));
+            break;
         }
 
         if (IS_STRING == Z_TYPE_PP(row)) {
@@ -272,6 +275,7 @@ int router_fire_action(zval *array)
                 char *filename = (char *)router_get_filename(Z_STRVAL_PP(row));
                 hitsuji_execute_scripts(filename);
                 efree(filename);
+                break;
             }
         }
     }
