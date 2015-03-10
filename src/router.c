@@ -67,7 +67,7 @@ char *router_get_url(void)
         ) {
             uri = Z_STRVAL_PP(url_pp);
         } else {
-            uri = SG(request_info).request_uri;
+            uri = SG(request_info).path_translated;
         }
         uri_len = strlen(uri);
 
