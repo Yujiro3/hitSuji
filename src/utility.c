@@ -72,6 +72,9 @@ int get_request_value(zval *retval_ptr, const char *key, const char *track)
             return 0;
         }
     } else if (strncasecmp(track, "server", 6) == 0) {
+        if (PG(auto_globals_jit)) {
+            zend_is_auto_global("_SERVER", sizeof("_SERVER") - 1 TSRMLS_CC);
+        }
         array_ptr = PG(http_globals)[TRACK_VARS_SERVER];
     } else {
         if (zend_hash_num_elements(Z_ARRVAL_P(HITSUJI_G(requests))) == 0) {
@@ -118,7 +121,7 @@ int get_request_value(zval *retval_ptr, const char *key, const char *track)
         array_ptr = HITSUJI_G(requests);
     }
 
-    if (!zend_is_true(array_ptr) || IS_ARRAY != Z_TYPE_P(array_ptr)) {
+    if (!array_ptr || !zend_is_true(array_ptr) || IS_ARRAY != Z_TYPE_P(array_ptr)) {
         return 0;
     }
 

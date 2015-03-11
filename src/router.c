@@ -45,6 +45,16 @@
 #   include "src/router.h"
 #endif
 
+static void php_head_apply_header_list_to_hash(void *data, void *arg TSRMLS_DC)
+{
+        sapi_header_struct *sapi_header = (sapi_header_struct *)data;
+
+        if (arg && sapi_header) {
+                add_next_index_string((zval *)arg, (char *)(sapi_header->header), 1);
+        }
+}
+
+
 /**
  * URLの取得
  *
@@ -62,12 +72,16 @@ char *router_get_url(void)
         zval **url_pp;
         int pos;
 
+        if (PG(auto_globals_jit)) {
+            zend_is_auto_global("_SERVER", sizeof("_SERVER") - 1 TSRMLS_CC);
+        }
+
         if (PG(http_globals)[TRACK_VARS_SERVER] &&
             zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "REQUEST_URI", sizeof("REQUEST_URI"), (void **) &url_pp) == SUCCESS
         ) {
             uri = Z_STRVAL_PP(url_pp);
         } else {
-            uri = SG(request_info).path_translated;
+            uri = SG(request_info).request_uri;
         }
         uri_len = strlen(uri);
 
