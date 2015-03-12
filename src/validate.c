@@ -40,6 +40,10 @@
 #   include "php_hitsuji.h"
 #endif
 
+#ifndef HAVE_HITSUJI_UTILITY_H
+#   include "src/utility.h"
+#endif
+
 #ifndef HAVE_HITSUJI_VALIDATE_H
 #   include "src/validate.h"
 #endif
@@ -376,7 +380,7 @@ int regex_verify(zval *input, char *pattern)
 int hitsuji_nonce_verify(const char *seed)
 {
     int reslut = 0;
-    char *nonce;
+    char *nonce = NULL;
     zval *znonce = NULL, zvalue;
 
     if (!get_request_value(&zvalue, "nonce", "request")) {
@@ -388,19 +392,18 @@ int hitsuji_nonce_verify(const char *seed)
 
         ZVAL_STRING(&zseed, seed, 0);
         zend_call_method_with_1_params(NULL, NULL, NULL, HITSUJI_G(nonce_function), (zval **)&znonce, &zseed);
-
-        nonce = (char *)emalloc(Z_STRLEN_P(znonce) + 1);
-        strcpy(nonce, Z_STRVAL_P(znonce));
-        zval_ptr_dtor(&znonce);
     } else {
-        get_nonce(nonce, seed);
+        char *nonce = get_nonce(seed);
+        ALLOC_INIT_ZVAL(znonce);
+        ZVAL_STRING(znonce, nonce, 1);
+        efree(nonce);
     }
 
     /* nonce値の比較 */
-    if (strncasecmp(Z_STRVAL(zvalue), nonce, strlen(nonce)) == 0) {
+    if (strncasecmp(Z_STRVAL(zvalue), Z_STRVAL_P(znonce), Z_STRLEN_P(znonce)) == 0) {
         reslut = 1;
     }
-    efree(nonce);
+    zval_ptr_dtor(&znonce);
 
     return reslut;
 }

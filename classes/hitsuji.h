@@ -341,7 +341,8 @@ PHP_METHOD(hitSuji, delegate)
             zend_hash_get_current_key_ex(Z_ARRVAL_P(property), &key, &key_len, &index, 0, &pos);
             if (strncasecmp(key, "data", 4) == 0) {
                 if (zend_is_true(*row)) {
-                    data = *row;
+                    ALLOC_INIT_ZVAL(data);
+                    ZVAL_ZVAL(data, *row, 1, 0);
                 }
             } else if (strncasecmp(key, "bind", 4) == 0) {
                 if (zend_is_true(*row) && IS_ARRAY == Z_TYPE_PP(row)) {
@@ -394,7 +395,8 @@ PHP_METHOD(hitSuji, delegate)
             1
         );
     } else {
-        data = HITSUJI_G(vars);
+        ALLOC_INIT_ZVAL(data);
+        ZVAL_ZVAL(data, HITSUJI_G(vars), 1, 0);
     }
 
     /* データの解析処理 */
@@ -406,7 +408,7 @@ PHP_METHOD(hitSuji, delegate)
 
     /* Nonce値の判定 */
     if (NULL != HITSUJI_G(page)) {
-        nvalid = hitsuji_nonce_verify(Z_ARRVAL_P(HITSUJI_G(page)));
+        nvalid = hitsuji_nonce_verify(Z_STRVAL_P(HITSUJI_G(page)));
     }
 
     if (nvalid) {
@@ -526,7 +528,8 @@ PHP_METHOD(hitSuji, quick)
 
             if (strncasecmp(key, "data", 4) == 0) {
                 if (zend_is_true(*row)) {
-                    data = *row;
+                    ALLOC_INIT_ZVAL(data);
+                    ZVAL_ZVAL(data, *row, 1, 0);
                 }
             } else {
                 if (zend_is_callable(*row, 0, NULL TSRMLS_CC)) {

@@ -143,7 +143,7 @@ int get_request_value(zval *retval_ptr, const char *key, const char *track)
  */
 char *get_nonce(const char *seed)
 {
-    char *nonce;
+    char *nonce = NULL;
     PHP_MD5_CTX context;
     time_t now; 
     long timer;
